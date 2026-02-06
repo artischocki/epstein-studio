@@ -1,0 +1,23 @@
+[project]
+name = "email-header-extractor"
+version = "0.1.0"
+description = "Extract email header blocks from PDFs using OCR."
+requires-python = ">=3.9"
+dependencies = [
+  "django>=4.2.28",
+  "pillow",
+  "pytesseract",
+  "tqdm",
+]
+
+[project.scripts]
+extract-email-headers = "email_header_extractor.extract_headers:main"
+extract-email-entities = "email_header_extractor.extract_headers:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["backend"]
+include = ["email_header_extractor"]

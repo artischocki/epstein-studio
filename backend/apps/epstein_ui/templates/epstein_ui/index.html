@@ -1,0 +1,134 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Redaction Overlay Studio</title>
+    <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
+  </head>
+  <body>
+    <div class="page">
+      <div id="contextMenu" class="context-menu">
+        <button data-action="edit">Edit</button>
+        <button data-action="delete">Delete</button>
+      </div>
+      <header class="topbar">
+        <div class="brand">Redaction Overlay Studio</div>
+        <div class="meta">Type over a redaction box, drag it, resize it, and style it.</div>
+      </header>
+
+      <main class="layout">
+        <section class="panel">
+          <div class="tabs">
+            <button class="tab active tab-text" data-tab="text">Text</button>
+            <button class="tab tab-hints" data-tab="hints">Hints</button>
+            <button class="tab tab-notes" data-tab="notes">Notes</button>
+          </div>
+          <div class="tab-panel active" data-panel="text">
+            <div class="hint">Double-click to create a text box. Double-click a box to edit it.</div>
+            <label class="field">
+              <span>Font</span>
+              <select id="fontSelect">
+                <option value="'Calibri', 'Segoe UI', sans-serif" selected>Calibri</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+              </select>
+            </label>
+            <div class="field">
+              <span>Style</span>
+              <div class="toggle-row">
+                <button id="boldToggle" class="btn btn-secondary" type="button">Bold</button>
+                <button id="italicToggle" class="btn btn-secondary" type="button">Italic</button>
+              </div>
+            </div>
+            <label class="field">
+              <span>Size</span>
+              <div class="size-row">
+                <input id="sizeRange" type="range" min="12" max="72" value="28" step="0.01" />
+                <input id="sizeInput" type="number" min="12" max="72" step="0.01" value="28" />
+              </div>
+            </label>
+            <label class="field">
+              <span>Kerning</span>
+              <div class="toggle-row">
+                <button id="kerningToggle" class="btn btn-secondary" type="button">Off</button>
+              </div>
+            </label>
+            <label class="field">
+              <span>Color</span>
+              <input id="colorPicker" type="color" value="#39ff14" />
+            </label>
+            <label class="field">
+              <span>Opacity</span>
+              <input id="opacityRange" type="range" min="30" max="100" value="100" />
+            </label>
+            <button id="resetBtn" class="btn">Reset Position</button>
+          </div>
+          <div class="tab-panel" data-panel="hints">
+            <div class="hint">Click twice to draw a red arrow. Select an arrow to edit handles.</div>
+          </div>
+          <div class="tab-panel" data-panel="notes">
+            <label class="field">
+              <span>Notes</span>
+              <div class="hint">Click to place a star. Select a star to edit its note.</div>
+              <textarea id="notesInput" rows="8" placeholder="Write notes for the selected star..."></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="canvas-wrap">
+          <div class="canvas-header">
+            <div>
+              <h2>Canvas</h2>
+              <p>Drag the green text. Use the corner handle to resize.</p>
+              <div class="file-title" id="fileTitle">No file loaded</div>
+            </div>
+            <div class="header-actions">
+              <div class="search-wrap">
+                <input id="searchInput" type="text" placeholder="Search filename..." />
+                <button id="searchBtn" class="btn btn-secondary">Open</button>
+              </div>
+              <button id="randomBtn" class="btn btn-secondary">Random PDF</button>
+            </div>
+          </div>
+          <div class="canvas-body">
+            <div class="canvas">
+            <svg id="overlay" viewBox="0 0 900 520" role="img" aria-label="Redaction overlay canvas">
+              <defs>
+                <marker id="arrowhead" markerWidth="5" markerHeight="3.5" refX="4.5" refY="1.75" orient="auto">
+                  <polygon points="0 0, 5 1.75, 0 3.5" fill="#ff2d2d"></polygon>
+                </marker>
+              </defs>
+              <g id="viewport" transform="translate(0 0) scale(1)">
+                <g id="pdfPages"></g>
+                <g id="hintLayer"></g>
+                <g id="textLayer"></g>
+              </g>
+            </svg>
+            </div>
+            <aside class="minimap">
+              <div class="minimap-title">Overview</div>
+              <div class="minimap-scroll">
+                <svg id="minimapSvg" viewBox="0 0 900 520" preserveAspectRatio="xMinYMin meet">
+                  <g id="minimapPages"></g>
+                  <rect id="minimapViewport" x="0" y="0" width="100" height="100" rx="6" />
+                </svg>
+              </div>
+              <div class="minimap-actions">
+                <label class="minimap-label">Move to Page</label>
+                <div class="minimap-controls">
+                  <input id="minimapPageInput" type="number" min="1" step="1" value="1" />
+                  <button id="minimapJump" class="btn btn-secondary">Current View</button>
+                </div>
+              </div>
+              <div class="minimap-hint">Scroll to zoom, drag to pan.</div>
+            </aside>
+          </div>
+          <div class="hint">Tip: Ctrl + drag or middle mouse to pan. Wheel to zoom. Shift snaps size steps.</div>
+        </section>
+      </main>
+    </div>
+
+    <script src="{% static 'epstein_ui/app.js' %}"></script>
+  </body>
+</html>
