@@ -327,7 +327,7 @@ function setActiveGroup(group) {
   opacityRange.value = Math.round((parseFloat(computed.opacity) || 1) * 100);
   boldToggle.classList.toggle("active", computed.fontWeight === "700" || computed.fontWeight === "bold");
   italicToggle.classList.toggle("active", computed.fontStyle === "italic");
-  setActiveTab("notes");
+  setActiveTab("text");
   updateTabStates();
 }
 
