@@ -18,6 +18,11 @@ const sizeInput = document.getElementById("sizeInput");
 const kerningToggle = document.getElementById("kerningToggle");
 const colorPicker = document.getElementById("colorPicker");
 const opacityRange = document.getElementById("opacityRange");
+const createAnnotationBtn = document.getElementById("createAnnotationBtn");
+const annotationPrompt = document.getElementById("annotationPrompt");
+const annotationControls = document.getElementById("annotationControls");
+const commitAnnotationBtn = document.getElementById("commitAnnotationBtn");
+const discardAnnotationBtn = document.getElementById("discardAnnotationBtn");
 const randomBtn = document.getElementById("randomBtn");
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
@@ -57,6 +62,12 @@ const pdfState = new Map();
 let pagesMeta = [];
 let autoPanActive = false;
 let contextTarget = null;
+let annotationCreateMode = false;
+let activeAnnotationId = null;
+let annotationCounter = 0;
+const annotations = new Map();
+let annotationPreview = null;
+const annotationAnchors = new Map();
 
 sizeRange.value = DEFAULT_TEXT_SIZE;
 sizeInput.value = DEFAULT_TEXT_SIZE;
@@ -66,6 +77,135 @@ if (!isAuthenticated) {
   document.querySelectorAll(".panel input, .panel select, .panel textarea, .panel button").forEach((el) => {
     el.disabled = true;
   });
+}
+
+function showAnnotationControls() {
+  annotationControls.classList.remove("hidden");
+  createAnnotationBtn.classList.add("hidden");
+}
+
+function hideAnnotationControls() {
+  annotationControls.classList.add("hidden");
+  createAnnotationBtn.classList.remove("hidden");
+}
+
+function showAnnotationPrompt() {
+  annotationPrompt.classList.remove("hidden");
+}
+
+function hideAnnotationPrompt() {
+  annotationPrompt.classList.add("hidden");
+}
+
+function startAnnotationCreate() {
+  annotationCreateMode = true;
+  showAnnotationPrompt();
+  if (!annotationPreview) {
+    annotationPreview = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    annotationPreview.classList.add("annotation-preview");
+    annotationPreview.setAttribute("r", 6);
+    hintLayer.appendChild(annotationPreview);
+  }
+}
+
+function stopAnnotationCreate() {
+  annotationCreateMode = false;
+  hideAnnotationPrompt();
+  if (annotationPreview) {
+    annotationPreview.remove();
+    annotationPreview = null;
+  }
+}
+
+function ensureAnnotationMode() {
+  if (!activeAnnotationId) {
+    hideAnnotationControls();
+  } else {
+    showAnnotationControls();
+  }
+}
+
+function getAnnotationElements(id) {
+  const textItems = Array.from(textLayer.querySelectorAll(".text-group")).filter(
+    (group) => group.dataset.annotation === id
+  );
+  const hintItems = Array.from(hintLayer.querySelectorAll("g")).filter(
+    (group) => group.dataset.annotation === id && !group.classList.contains("annotation-anchor")
+  );
+  return { textItems, hintItems };
+}
+
+function setAnnotationElementsVisible(id, visible) {
+  const { textItems, hintItems } = getAnnotationElements(id);
+  textItems.forEach((group) => {
+    group.style.display = visible ? "" : "none";
+  });
+  hintItems.forEach((group) => {
+    group.style.display = visible ? "" : "none";
+  });
+  const anchor = annotationAnchors.get(id);
+  if (anchor) {
+    anchor.style.display = visible ? "none" : "";
+  }
+}
+
+function ensureAnnotationAnchor(id) {
+  const data = annotations.get(id);
+  if (!data) return null;
+  let anchor = annotationAnchors.get(id);
+  if (!anchor) {
+    anchor = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    anchor.classList.add("annotation-anchor");
+    anchor.setAttribute("r", 6);
+    hintLayer.appendChild(anchor);
+    annotationAnchors.set(id, anchor);
+  }
+  anchor.dataset.annotation = id;
+  anchor.setAttribute("cx", data.x);
+  anchor.setAttribute("cy", data.y);
+  return anchor;
+}
+
+function discardActiveAnnotation() {
+  if (!activeAnnotationId) return;
+  const id = activeAnnotationId;
+  const textItems = Array.from(textLayer.querySelectorAll(".text-group"));
+  textItems.forEach((group) => {
+    if (group.dataset.annotation === id) {
+      group.remove();
+    }
+  });
+  const hintItems = Array.from(hintLayer.querySelectorAll("g"));
+  hintItems.forEach((group) => {
+    if (group.dataset.annotation === id) {
+      group.remove();
+    }
+  });
+  const anchor = annotationAnchors.get(id);
+  if (anchor) {
+    anchor.remove();
+    annotationAnchors.delete(id);
+  }
+  annotations.delete(id);
+  activeAnnotationId = null;
+  ensureAnnotationMode();
+}
+
+function commitActiveAnnotation() {
+  if (!activeAnnotationId) return;
+  const id = activeAnnotationId;
+  ensureAnnotationAnchor(id);
+  setAnnotationElementsVisible(id, false);
+  activeAnnotationId = null;
+  ensureAnnotationMode();
+}
+
+function ensureLegacyAnnotation() {
+  if (activeAnnotationId) return activeAnnotationId;
+  annotationCounter += 1;
+  activeAnnotationId = `ann_legacy_${annotationCounter}`;
+  annotations.set(activeAnnotationId, { id: activeAnnotationId, x: 0, y: 0 });
+  return activeAnnotationId;
 }
 
 function setActiveTab(tabId) {
@@ -270,6 +410,12 @@ function updateTabStates() {
   const textPanel = document.querySelector('[data-panel="text"]');
   const hintsPanel = document.querySelector('[data-panel="hints"]');
   const notesPanel = document.querySelector('[data-panel="notes"]');
+  if (!activeAnnotationId) {
+    if (textPanel) textPanel.classList.add("disabled");
+    if (hintsPanel) hintsPanel.classList.add("disabled");
+    if (notesPanel) notesPanel.classList.add("disabled");
+    return;
+  }
   if (textPanel) {
     textPanel.classList.toggle("disabled", !activeGroup);
   }
@@ -379,8 +525,10 @@ function selectAllText(editor) {
 
 function createTextBox(x, y) {
   if (!isAuthenticated) return null;
+  if (!activeAnnotationId) return null;
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   group.classList.add("text-group");
+  group.dataset.annotation = activeAnnotationId;
   setTranslate(group, x, y);
 
   const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -424,6 +572,7 @@ function createTextBox(x, y) {
 function createTextBoxFromData(data) {
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   group.classList.add("text-group");
+  group.dataset.annotation = data.annotationId || ensureLegacyAnnotation();
   setTranslate(group, data.x, data.y);
 
   const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -464,6 +613,7 @@ function createTextBoxFromData(data) {
 
 function onDragStart(evt) {
   if (!isAuthenticated) return;
+  if (!activeAnnotationId) return;
   const group = evt.target.closest(".text-group");
   if (!group) return;
   if (evt.target.closest(".text-editor")) return;
@@ -495,6 +645,7 @@ function onDragEnd() {
 
 function onResizeStart(evt) {
   if (!isAuthenticated) return;
+  if (!activeAnnotationId) return;
   const group = evt.target.closest(".text-group");
   if (!group) return;
   isResizing = true;
@@ -589,6 +740,7 @@ function onMinimapEnd() {
 }
 
 function addStar(point) {
+  if (!activeAnnotationId) return null;
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   const size = 10;
   const cx = point.x;
@@ -622,17 +774,22 @@ function addStar(point) {
   group.dataset.cx = cx;
   group.dataset.cy = cy;
   group.dataset.note = "";
+  group.dataset.annotation = activeAnnotationId;
   hintLayer.appendChild(group);
   return group;
 }
 
 function addStarFromData(data) {
+  const prev = activeAnnotationId;
+  activeAnnotationId = data.annotationId || prev || ensureLegacyAnnotation();
   const group = addStar({ x: data.cx, y: data.cy });
   if (!group) return;
   group.dataset.note = data.note || "";
+  activeAnnotationId = prev;
 }
 
 function addArrow(start, end) {
+  if (!activeAnnotationId) return null;
   const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line.classList.add("hint-arrow", "hint-arrow-line");
@@ -664,13 +821,17 @@ function addArrow(start, end) {
   group.appendChild(startHandle);
   group.appendChild(endHandle);
   group.dataset.type = "arrow";
+  group.dataset.annotation = activeAnnotationId;
   hideHintHandles(group);
   hintLayer.appendChild(group);
   return group;
 }
 
 function addArrowFromData(data) {
+  const prev = activeAnnotationId;
+  activeAnnotationId = data.annotationId || prev || ensureLegacyAnnotation();
   addArrow({ x: data.x1, y: data.y1 }, { x: data.x2, y: data.y2 });
+  activeAnnotationId = prev;
 }
 
 function attachArrowMarker(line, start, end) {
@@ -764,6 +925,7 @@ function updateStarPosition(group, cx, cy) {
 }
 
 function handleHintsClick(point) {
+  if (!activeAnnotationId) return;
   if (!arrowStart) {
     arrowStart = point;
     if (previewArrow) {
@@ -788,11 +950,13 @@ function handleHintsClick(point) {
 }
 
 function handleNotesClick(point) {
+  if (!activeAnnotationId) return;
   addStar(point);
 }
 
 function onDoubleClick(evt) {
   if (!isAuthenticated) return;
+  if (!activeAnnotationId) return;
   if (activeTab !== "text") return;
   const group = evt.target.closest(".text-group");
   if (group) {
@@ -822,18 +986,27 @@ function clearOverlays() {
   while (hintLayer.firstChild) {
     hintLayer.removeChild(hintLayer.firstChild);
   }
+  annotationAnchors.forEach((anchor) => anchor.remove());
+  annotationAnchors.clear();
   activeGroup = null;
   activeHint = null;
+  annotations.clear();
+  activeAnnotationId = null;
+  annotationCounter = 0;
+  stopAnnotationCreate();
+  ensureAnnotationMode();
   updateTabStates();
 }
 
 function serializeCurrentState() {
   if (!currentPdfKey) return;
+  const annotationItems = Array.from(annotations.values());
   const textItems = Array.from(textLayer.querySelectorAll(".text-group")).map((group) => {
     const { editor } = getGroupElements(group);
     const pos = parseTranslate(group.getAttribute("transform") || "translate(0 0)");
     const computed = window.getComputedStyle(editor);
     return {
+      annotationId: group.dataset.annotation || "",
       x: pos.x,
       y: pos.y,
       text: editor.textContent || "",
@@ -852,6 +1025,7 @@ function serializeCurrentState() {
     const handles = group.querySelectorAll(".hint-handle");
     if (handles.length === 2) {
       return {
+        annotationId: group.dataset.annotation || "",
         x1: parseFloat(handles[0].getAttribute("cx")),
         y1: parseFloat(handles[0].getAttribute("cy")),
         x2: parseFloat(handles[1].getAttribute("cx")),
@@ -859,6 +1033,7 @@ function serializeCurrentState() {
       };
     }
     return {
+      annotationId: group.dataset.annotation || "",
       x1: parseFloat(line.getAttribute("x1")),
       y1: parseFloat(line.getAttribute("y1")),
       x2: parseFloat(line.dataset.rawX2 || line.getAttribute("x2")),
@@ -866,20 +1041,35 @@ function serializeCurrentState() {
     };
   });
   const stars = Array.from(hintLayer.querySelectorAll('g[data-type="star"]')).map((group) => ({
+    annotationId: group.dataset.annotation || "",
     cx: parseFloat(group.dataset.cx || 0),
     cy: parseFloat(group.dataset.cy || 0),
     note: group.dataset.note || "",
   }));
-  pdfState.set(currentPdfKey, { textItems, arrows, stars });
+  pdfState.set(currentPdfKey, { annotations: annotationItems, textItems, arrows, stars });
 }
 
 function loadStateForPdf(key) {
   clearOverlays();
   const state = pdfState.get(key);
-  if (!state) return;
+  annotations.clear();
+  activeAnnotationId = null;
+  if (!state) {
+    ensureAnnotationMode();
+    return;
+  }
+  (state.annotations || []).forEach((annotation) => {
+    annotations.set(annotation.id, annotation);
+  });
   state.textItems.forEach((item) => createTextBoxFromData(item));
   state.arrows.forEach((item) => addArrowFromData(item));
   state.stars.forEach((item) => addStarFromData(item));
+  (state.annotations || []).forEach((annotation) => {
+    ensureAnnotationAnchor(annotation.id);
+    setAnnotationElementsVisible(annotation.id, false);
+  });
+  activeAnnotationId = null;
+  ensureAnnotationMode();
 }
 
 function buildPageImages(container, pages, withLabels = false) {
@@ -1061,6 +1251,10 @@ textLayer.addEventListener("pointerdown", (evt) => {
   if (!isAuthenticated) return;
   const group = evt.target.closest(".text-group");
   if (group) {
+    if (group.dataset.annotation) {
+      activeAnnotationId = group.dataset.annotation;
+      ensureAnnotationMode();
+    }
     setActiveGroup(group);
   }
   onDragStart(evt);
@@ -1076,8 +1270,25 @@ textLayer.addEventListener("contextmenu", (evt) => {
 hintLayer.addEventListener("pointerdown", (evt) => {
   if (!isAuthenticated) return;
   if (arrowStart) return;
+  const anchor = evt.target.closest(".annotation-anchor");
+  if (anchor) {
+    const annId = anchor.dataset.annotation;
+    if (annId) {
+      activeAnnotationId = annId;
+      ensureAnnotationMode();
+      setAnnotationElementsVisible(annId, true);
+      setActiveTab("text");
+    }
+    evt.preventDefault();
+    evt.stopPropagation();
+    return;
+  }
   const group = evt.target.closest("g");
   if (!group) return;
+  if (group.dataset.annotation) {
+    activeAnnotationId = group.dataset.annotation;
+    ensureAnnotationMode();
+  }
   if (group.dataset.type === "arrow") {
     setActiveHint(group);
     if (evt.target.classList.contains("hint-handle")) {
@@ -1120,6 +1331,17 @@ hintLayer.addEventListener("contextmenu", (evt) => {
 svg.addEventListener("pointerdown", (evt) => {
   if (evt.ctrlKey || evt.button === 1) {
     onPanStart(evt);
+    return;
+  }
+  if (annotationCreateMode) {
+    const point = svgPointInViewport(evt);
+    annotationCounter += 1;
+    activeAnnotationId = `ann_${Date.now()}_${annotationCounter}`;
+    annotations.set(activeAnnotationId, { id: activeAnnotationId, x: point.x, y: point.y });
+    stopAnnotationCreate();
+    showAnnotationControls();
+    setActiveTab("text");
+    evt.preventDefault();
     return;
   }
   if (!isAuthenticated) return;
@@ -1173,6 +1395,11 @@ window.addEventListener("pointermove", (evt) => {
   onResizeMove(evt);
   onPanMove(evt);
   onMinimapMove(evt);
+  if (annotationCreateMode && annotationPreview) {
+    const point = svgPointInViewport(evt);
+    annotationPreview.setAttribute("cx", point.x);
+    annotationPreview.setAttribute("cy", point.y);
+  }
   if (activeTab === "hints" && arrowStart && previewArrow) {
     const point = svgPointInViewport(evt);
     if (previewArrow._marker) {
@@ -1248,15 +1475,27 @@ contextMenu.addEventListener("click", (evt) => {
   }
   if (action === "edit") {
     if (type === "text") {
+      if (group.dataset.annotation) {
+        activeAnnotationId = group.dataset.annotation;
+        ensureAnnotationMode();
+      }
       setActiveGroup(group);
       const { editor } = getGroupElements(group);
       editor.setAttribute("contenteditable", "true");
       editor.classList.add("editable-text");
       editor.focus();
     } else if (type === "arrow") {
+      if (group.dataset.annotation) {
+        activeAnnotationId = group.dataset.annotation;
+        ensureAnnotationMode();
+      }
       setActiveTab("hints");
       setActiveHint(group);
     } else if (type === "star") {
+      if (group.dataset.annotation) {
+        activeAnnotationId = group.dataset.annotation;
+        ensureAnnotationMode();
+      }
       setActiveTab("notes");
       setActiveHint(group);
     }
@@ -1285,7 +1524,23 @@ tabs.forEach((tab) => {
   tab.addEventListener("click", () => setActiveTab(tab.dataset.tab));
 });
 
+createAnnotationBtn.addEventListener("click", () => {
+  if (!isAuthenticated) return;
+  startAnnotationCreate();
+});
+
+commitAnnotationBtn.addEventListener("click", () => {
+  if (!isAuthenticated) return;
+  commitActiveAnnotation();
+});
+
+discardAnnotationBtn.addEventListener("click", () => {
+  if (!isAuthenticated) return;
+  discardActiveAnnotation();
+});
+
 setActiveTab("text");
 setViewportTransform();
 fetchRandomPdf();
 window.addEventListener("resize", () => fitToView(true));
+ensureAnnotationMode();

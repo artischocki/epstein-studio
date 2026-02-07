@@ -90,6 +90,29 @@ body {
   pointer-events: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.annotation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+}
+
+.annotation-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  justify-content: center;
+}
+
+.annotation-panel {
+  display: flex;
+  flex-direction: column;
+}
+
 .page {
   height: 100vh;
   padding: 28px clamp(20px, 4vw, 52px) 40px;
@@ -262,6 +285,12 @@ body {
   background: var(--accent);
   color: #0b110b;
   border-color: transparent;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
 }
 
 .account-menu {
@@ -485,6 +514,20 @@ image {
   stroke: #0a120a;
   stroke-width: 2;
   cursor: nwse-resize;
+}
+
+.annotation-preview {
+  fill: var(--accent);
+  stroke: #0a120a;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.annotation-anchor {
+  fill: var(--accent);
+  stroke: #0a120a;
+  stroke-width: 2;
+  cursor: pointer;
 }
 
 .text-group:not(.active) .text-box,

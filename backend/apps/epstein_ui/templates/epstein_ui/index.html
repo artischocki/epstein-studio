@@ -35,59 +35,69 @@
       </header>
 
       <main class="layout">
-        <section class="panel">
-          <div class="tabs">
-            <button class="tab active tab-text" data-tab="text">Text</button>
-            <button class="tab tab-hints" data-tab="hints">Hints</button>
-            <button class="tab tab-notes" data-tab="notes">Notes</button>
+        <section class="panel annotation-panel">
+          <button id="createAnnotationBtn" class="btn">Create Annotation</button>
+          <div id="annotationPrompt" class="hint hidden">
+            Click on the canvas to place a new annotation.
           </div>
-          <div class="tab-panel active" data-panel="text">
-            <div class="hint">Double-click to create a text box. Double-click a box to edit it.</div>
-            <label class="field">
-              <span>Font</span>
-              <select id="fontSelect">
-                <option value="'Calibri', 'Segoe UI', sans-serif" selected>Calibri</option>
-                <option value="'Times New Roman', serif">Times New Roman</option>
-              </select>
-            </label>
-            <div class="field">
-              <span>Style</span>
-              <div class="toggle-row">
-                <button id="boldToggle" class="btn btn-secondary" type="button">Bold</button>
-                <button id="italicToggle" class="btn btn-secondary" type="button">Italic</button>
-              </div>
+          <div id="annotationControls" class="annotation-controls hidden">
+            <div class="tabs">
+              <button class="tab active tab-text" data-tab="text">Text</button>
+              <button class="tab tab-hints" data-tab="hints">Hints</button>
+              <button class="tab tab-notes" data-tab="notes">Notes</button>
             </div>
-            <label class="field">
-              <span>Size</span>
-              <div class="size-row">
-                <input id="sizeRange" type="range" min="12" max="72" value="24" step="0.01" />
-                <input id="sizeInput" type="number" min="12" max="72" step="0.01" value="24" />
+            <div class="tab-panel active" data-panel="text">
+              <div class="hint">Double-click to create a text box. Double-click a box to edit it.</div>
+              <label class="field">
+                <span>Font</span>
+                <select id="fontSelect">
+                  <option value="'Calibri', 'Segoe UI', sans-serif" selected>Calibri</option>
+                  <option value="'Times New Roman', serif">Times New Roman</option>
+                </select>
+              </label>
+              <div class="field">
+                <span>Style</span>
+                <div class="toggle-row">
+                  <button id="boldToggle" class="btn btn-secondary" type="button">Bold</button>
+                  <button id="italicToggle" class="btn btn-secondary" type="button">Italic</button>
+                </div>
               </div>
-            </label>
-            <label class="field">
-              <span>Kerning</span>
-              <div class="toggle-row">
-                <button id="kerningToggle" class="btn btn-secondary" type="button">Off</button>
-              </div>
-            </label>
-            <label class="field">
-              <span>Color</span>
-              <input id="colorPicker" type="color" value="#39ff14" />
-            </label>
-            <label class="field">
-              <span>Opacity</span>
-              <input id="opacityRange" type="range" min="30" max="100" value="100" />
-            </label>
-          </div>
-          <div class="tab-panel" data-panel="hints">
-            <div class="hint">Click twice to draw a red arrow. Select an arrow to edit handles.</div>
-          </div>
-          <div class="tab-panel" data-panel="notes">
-            <label class="field">
-              <span>Notes</span>
-              <div class="hint">Click to place a star. Select a star to edit its note.</div>
-              <textarea id="notesInput" rows="8" placeholder="Write notes for the selected star..."></textarea>
-            </label>
+              <label class="field">
+                <span>Size</span>
+                <div class="size-row">
+                  <input id="sizeRange" type="range" min="12" max="72" value="24" step="0.01" />
+                  <input id="sizeInput" type="number" min="12" max="72" step="0.01" value="24" />
+                </div>
+              </label>
+              <label class="field">
+                <span>Kerning</span>
+                <div class="toggle-row">
+                  <button id="kerningToggle" class="btn btn-secondary" type="button">Off</button>
+                </div>
+              </label>
+              <label class="field">
+                <span>Color</span>
+                <input id="colorPicker" type="color" value="#39ff14" />
+              </label>
+              <label class="field">
+                <span>Opacity</span>
+                <input id="opacityRange" type="range" min="30" max="100" value="100" />
+              </label>
+            </div>
+            <div class="tab-panel" data-panel="hints">
+              <div class="hint">Click twice to draw a red arrow. Select an arrow to edit handles.</div>
+            </div>
+            <div class="tab-panel" data-panel="notes">
+              <label class="field">
+                <span>Notes</span>
+                <div class="hint">Click to place a star. Select a star to edit its note.</div>
+                <textarea id="notesInput" rows="8" placeholder="Write notes for the selected star..."></textarea>
+              </label>
+            </div>
+            <div class="annotation-actions">
+              <button id="commitAnnotationBtn" class="btn">Commit Annotation</button>
+              <button id="discardAnnotationBtn" class="btn btn-outline">Discard Annotation</button>
+            </div>
           </div>
         </section>
 
