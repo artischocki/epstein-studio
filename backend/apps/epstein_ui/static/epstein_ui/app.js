@@ -46,6 +46,9 @@ const annotationViewTitle = document.getElementById("annotationViewTitle");
 const annotationViewHash = document.getElementById("annotationViewHash");
 const annotationViewNote = document.getElementById("annotationViewNote");
 const annotationViewBack = document.getElementById("annotationViewBack");
+const confirmOverlay = document.getElementById("confirmOverlay");
+const confirmCancel = document.getElementById("confirmCancel");
+const confirmOk = document.getElementById("confirmOk");
 const discussionPanel = document.getElementById("discussionPanel");
 const discussionList = document.getElementById("discussionList");
 const discussionForm = document.getElementById("discussionForm");
@@ -96,6 +99,7 @@ let heatmapBase = null;
 let suppressNextTextCreate = false;
 let suggestionTimer = null;
 let commentCache = new Map();
+let pendingConfirm = null;
 
 function formatTimestamp(value, { dateOnly = false } = {}) {
   if (!value) return "";
@@ -722,24 +726,25 @@ function renderDiscussion(annotationId, comments) {
     deleteBtn.disabled = !canDelete;
     deleteBtn.addEventListener("click", async () => {
       if (!canDelete) return;
-      if (!window.confirm("Delete this comment and all replies?")) return;
-      const result = await deleteComment(comment.id);
-      if (!result || !result.ok) return;
-      const removeIds = new Set([comment.id]);
-      let changed = true;
-      while (changed) {
-        changed = false;
-        comments.forEach((c) => {
-          if (c.parent_id && removeIds.has(c.parent_id) && !removeIds.has(c.id)) {
-            removeIds.add(c.id);
-            changed = true;
-          }
-        });
-      }
-      const next = comments.filter((c) => !removeIds.has(c.id));
-      comments.length = 0;
-      next.forEach((c) => comments.push(c));
-      renderDiscussion(annotationId, comments);
+      showConfirm(async () => {
+        const result = await deleteComment(comment.id);
+        if (!result || !result.ok) return;
+        const removeIds = new Set([comment.id]);
+        let changed = true;
+        while (changed) {
+          changed = false;
+          comments.forEach((c) => {
+            if (c.parent_id && removeIds.has(c.parent_id) && !removeIds.has(c.id)) {
+              removeIds.add(c.id);
+              changed = true;
+            }
+          });
+        }
+        const next = comments.filter((c) => !removeIds.has(c.id));
+        comments.length = 0;
+        next.forEach((c) => comments.push(c));
+        renderDiscussion(annotationId, comments);
+      });
     });
 
     actions.appendChild(upBtn);
@@ -1224,6 +1229,18 @@ function openContextMenu(x, y, target) {
 function closeContextMenu() {
   contextMenu.style.display = "none";
   contextTarget = null;
+}
+
+function showConfirm(onOk) {
+  if (!confirmOverlay || !confirmOk) return;
+  pendingConfirm = onOk;
+  confirmOverlay.classList.remove("hidden");
+}
+
+function hideConfirm() {
+  if (!confirmOverlay) return;
+  confirmOverlay.classList.add("hidden");
+  pendingConfirm = null;
 }
 
 function rgbToHex(color) {
@@ -2476,6 +2493,7 @@ updateTabStates();
 
 window.addEventListener("pointerdown", (evt) => {
   if (evt.target.closest(".context-menu")) return;
+  if (evt.target.closest("#confirmOverlay")) return;
   if (evt.target.closest(".text-editor")) return;
   if (evt.target.closest(".panel")) return;
   if (activeAnnotationViewOnly) {
@@ -2512,6 +2530,30 @@ discardAnnotationBtn.addEventListener("click", () => {
 if (annotationViewBack) {
   annotationViewBack.addEventListener("click", () => {
     clearActiveAnnotation();
+  });
+}
+
+if (confirmCancel) {
+  confirmCancel.addEventListener("click", () => {
+    hideConfirm();
+  });
+}
+
+if (confirmOk) {
+  confirmOk.addEventListener("click", async () => {
+    if (pendingConfirm) {
+      const fn = pendingConfirm;
+      hideConfirm();
+      await fn();
+    }
+  });
+}
+
+if (confirmOverlay) {
+  confirmOverlay.addEventListener("click", (evt) => {
+    if (evt.target === confirmOverlay) {
+      hideConfirm();
+    }
   });
 }
 

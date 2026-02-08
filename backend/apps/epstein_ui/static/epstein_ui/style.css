@@ -927,6 +927,44 @@ image {
   background: #2a3236;
 }
 
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 9, 10, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.confirm-dialog {
+  background: #171c1f;
+  border: 1px solid #2a3236;
+  border-radius: 14px;
+  padding: 16px;
+  min-width: 260px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.confirm-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.confirm-text {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .hint {
   font-size: 12px;
   color: var(--muted);
