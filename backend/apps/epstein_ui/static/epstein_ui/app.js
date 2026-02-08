@@ -52,6 +52,7 @@ const discussionForm = document.getElementById("discussionForm");
 const discussionInput = document.getElementById("discussionInput");
 const discussionSubmit = document.getElementById("discussionSubmit");
 const discussionLoginHint = document.getElementById("discussionLoginHint");
+const discussionEditBtn = document.getElementById("discussionEditBtn");
 const isAuthenticated = document.body.dataset.auth === "1";
 
 // --- Shared state (viewport, active elements, annotations) ---
@@ -200,6 +201,7 @@ function updateAnnotationPanelMode() {
     if (annotationViewNote) annotationViewNote.classList.add("hidden");
     if (annotationViewBack) annotationViewBack.classList.add("hidden");
     if (discussionPanel) discussionPanel.classList.add("hidden");
+    if (discussionEditBtn) discussionEditBtn.classList.add("hidden");
     tabsList.forEach((tab) => {
       tab.disabled = false;
     });
@@ -219,6 +221,7 @@ function updateAnnotationPanelMode() {
     if (annotationViewNote) annotationViewNote.classList.remove("hidden");
     if (annotationViewBack) annotationViewBack.classList.remove("hidden");
     if (discussionPanel) discussionPanel.classList.remove("hidden");
+    if (discussionEditBtn) discussionEditBtn.classList.add("hidden");
     if (notesInput) notesInput.closest(".field")?.classList.add("hidden");
     if (annotationViewTitle) {
       const ann = annotations.get(activeAnnotationId);
@@ -251,7 +254,8 @@ function updateAnnotationPanelMode() {
     }
     if (annotationViewNote) annotationViewNote.classList.add("hidden");
     if (annotationViewBack) annotationViewBack.classList.add("hidden");
-    if (discussionPanel) discussionPanel.classList.remove("hidden");
+    if (discussionPanel) discussionPanel.classList.add("hidden");
+    if (discussionEditBtn) discussionEditBtn.classList.add("hidden");
     if (notesInput) notesInput.classList.remove("hidden");
     tabsList.forEach((tab) => {
       tab.disabled = false;
@@ -282,7 +286,9 @@ function activateAnnotation(id, { viewOnly = false } = {}) {
   ensureAnnotationMode();
   setAnnotationElementsVisible(id, true);
   setActiveTab("notes");
-  loadDiscussionForAnnotation(ann?.server_id);
+  if (activeAnnotationViewOnly) {
+    loadDiscussionForAnnotation(ann?.server_id);
+  }
 }
 
 function clearActiveAnnotation() {
@@ -590,11 +596,11 @@ function renderNotesList() {
     });
     wrapper.addEventListener("click", () => {
       if (ann.isOwner) {
-        if (activeAnnotationId === ann.id && !activeAnnotationViewOnly) {
+        if (activeAnnotationId === ann.id && activeAnnotationViewOnly) {
           clearActiveAnnotation();
           return;
         }
-        activateAnnotation(ann.id, { viewOnly: false });
+        activateAnnotation(ann.id, { viewOnly: true });
         return;
       }
       if (activeAnnotationId === ann.id && activeAnnotationViewOnly) {
@@ -701,10 +707,41 @@ function renderDiscussion(annotationId, comments) {
       item.appendChild(form);
     });
 
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "comment-delete";
+    deleteBtn.type = "button";
+    deleteBtn.textContent = "Delete";
+    const currentUser = document.body.dataset.user || "";
+    const canDelete = isAuthenticated && currentUser && comment.user === currentUser;
+    deleteBtn.classList.toggle("hidden", !canDelete);
+    deleteBtn.disabled = !canDelete;
+    deleteBtn.addEventListener("click", async () => {
+      if (!canDelete) return;
+      if (!window.confirm("Delete this comment and all replies?")) return;
+      const result = await deleteComment(comment.id);
+      if (!result || !result.ok) return;
+      const removeIds = new Set([comment.id]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        comments.forEach((c) => {
+          if (c.parent_id && removeIds.has(c.parent_id) && !removeIds.has(c.id)) {
+            removeIds.add(c.id);
+            changed = true;
+          }
+        });
+      }
+      const next = comments.filter((c) => !removeIds.has(c.id));
+      comments.length = 0;
+      next.forEach((c) => comments.push(c));
+      renderDiscussion(annotationId, comments);
+    });
+
     actions.appendChild(upBtn);
     actions.appendChild(downBtn);
     actions.appendChild(score);
     actions.appendChild(replyBtn);
+    actions.appendChild(deleteBtn);
     item.appendChild(meta);
     item.appendChild(body);
     item.appendChild(actions);
@@ -729,6 +766,10 @@ async function loadDiscussionForAnnotation(annotationId) {
   }
   if (discussionForm) {
     discussionForm.classList.toggle("hidden", !isAuthenticated);
+  }
+  if (discussionEditBtn) {
+    const ann = annotations.get(activeAnnotationId);
+    discussionEditBtn.classList.toggle("hidden", !(ann && ann.isOwner && isAuthenticated));
   }
   if (commentCache.has(annotationId)) {
     renderDiscussion(annotationId, commentCache.get(annotationId));
@@ -767,6 +808,21 @@ async function sendCommentVote(commentId, value) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ comment_id: commentId, value }),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+async function deleteComment(commentId) {
+  try {
+    const response = await fetch("/comment-delete/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment_id: commentId }),
     });
     if (!response.ok) return null;
     return await response.json();
@@ -2468,6 +2524,14 @@ if (discussionSubmit) {
     commentCache.set(ann.server_id, list);
     discussionInput.value = "";
     renderDiscussion(ann.server_id, list);
+  });
+}
+
+if (discussionEditBtn) {
+  discussionEditBtn.addEventListener("click", () => {
+    const ann = annotations.get(activeAnnotationId);
+    if (!ann || !ann.isOwner || !isAuthenticated) return;
+    activateAnnotation(activeAnnotationId, { viewOnly: false });
   });
 }
 

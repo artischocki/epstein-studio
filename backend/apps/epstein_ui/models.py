@@ -62,3 +62,22 @@ class AnnotationVote(models.Model):
 
     class Meta:
         unique_together = ("annotation", "user")
+
+
+class AnnotationComment(models.Model):
+    """Discussion comment for an annotation."""
+    annotation = models.ForeignKey(Annotation, on_delete=models.CASCADE, related_name="comments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies")
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class CommentVote(models.Model):
+    """Single user vote (+1 or -1) for a comment."""
+    comment = models.ForeignKey(AnnotationComment, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    value = models.SmallIntegerField()
+
+    class Meta:
+        unique_together = ("comment", "user")

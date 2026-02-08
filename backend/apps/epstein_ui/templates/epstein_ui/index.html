@@ -8,7 +8,7 @@
     <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
     <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
   </head>
-  <body data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}">
+  <body data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}" data-user="{% if user.is_authenticated %}{{ user.username }}{% endif %}">
     <div class="page">
       <div id="contextMenu" class="context-menu">
         <button data-action="edit">Edit</button>

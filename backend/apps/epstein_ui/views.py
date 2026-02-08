@@ -487,6 +487,27 @@ def annotation_comments(request):
 
 
 @csrf_exempt
+def delete_comment(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Login required"}, status=401)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    comment_id = payload.get("comment_id")
+    if not comment_id:
+        return JsonResponse({"error": "Missing comment_id"}, status=400)
+    try:
+        comment = AnnotationComment.objects.get(id=comment_id, user=request.user)
+    except AnnotationComment.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+    comment.delete()
+    return JsonResponse({"ok": True})
+
+
+@csrf_exempt
 def comment_votes(request):
     if request.method != "POST":
         return JsonResponse({"error": "Method not allowed"}, status=405)

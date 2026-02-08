@@ -185,6 +185,8 @@ body {
   font-size: 13px;
   color: var(--text);
   white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .comment-actions {
@@ -198,6 +200,20 @@ body {
   font-size: 12px;
   color: var(--muted);
   cursor: pointer;
+}
+
+.comment-delete {
+  font-size: 12px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.comment-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .comment-indent {
