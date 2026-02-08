@@ -254,6 +254,7 @@ def _annotation_to_dict(annotation: Annotation, request=None) -> dict:
         "upvotes": upvotes,
         "downvotes": downvotes,
         "user_vote": user_vote,
+        "created_at": annotation.created_at.isoformat() if annotation.created_at else None,
         "textItems": [
             {
                 "x": item.x,

@@ -86,6 +86,28 @@ let heatmapBase = null;
 let suppressNextTextCreate = false;
 let suggestionTimer = null;
 
+function formatTimestamp(value, { dateOnly = false } = {}) {
+  if (!value) return "";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "";
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const pad = (n) => String(n).padStart(2, "0");
+  const m = months[dt.getMonth()];
+  const d = dt.getDate();
+  const currentYear = new Date().getFullYear();
+  const year = dt.getFullYear();
+  const yearSuffix = year !== currentYear ? `, ${year}` : "";
+  if (dateOnly) {
+    return `${m} ${d}${yearSuffix}`;
+  }
+  const h = pad(dt.getHours());
+  const min = pad(dt.getMinutes());
+  if (year !== currentYear) {
+    return `${m} ${d}, ${year} ${h}:${min}`;
+  }
+  return `${m} ${d}, ${h}:${min}`;
+}
+
 sizeRange.value = DEFAULT_TEXT_SIZE;
 sizeInput.value = DEFAULT_TEXT_SIZE;
 
@@ -178,7 +200,8 @@ function updateAnnotationPanelMode() {
     if (annotationViewTitle) {
       const ann = annotations.get(activeAnnotationId);
       const name = ann?.user || "Unknown";
-      annotationViewTitle.textContent = `${name}:`;
+      const stamp = formatTimestamp(ann?.createdAt);
+      annotationViewTitle.textContent = stamp ? `${name}: ${stamp}` : `${name}:`;
     }
     if (annotationViewNote) {
       const ann = annotations.get(activeAnnotationId);
@@ -380,7 +403,13 @@ function ensureLegacyAnnotation() {
   if (activeAnnotationId) return activeAnnotationId;
   annotationCounter += 1;
   activeAnnotationId = `ann_legacy_${annotationCounter}`;
-  annotations.set(activeAnnotationId, { id: activeAnnotationId, x: 0, y: 0, isOwner: true });
+  annotations.set(activeAnnotationId, {
+    id: activeAnnotationId,
+    x: 0,
+    y: 0,
+    isOwner: true,
+    createdAt: new Date().toISOString(),
+  });
   return activeAnnotationId;
 }
 
@@ -408,10 +437,12 @@ function renderNotesList() {
 
     const meta = document.createElement("div");
     meta.className = "annotation-note-meta";
+    const stamp = formatTimestamp(ann.createdAt, { dateOnly: true });
     if (ann.isOwner) {
-      meta.textContent = "By you";
+      meta.textContent = stamp ? `By you • ${stamp}` : "By you";
     } else {
-      meta.textContent = ann.user ? `By ${ann.user}` : "By Unknown";
+      const author = ann.user ? `By ${ann.user}` : "By Unknown";
+      meta.textContent = stamp ? `${author} • ${stamp}` : author;
     }
 
     const text = document.createElement("div");
@@ -1503,13 +1534,14 @@ async function loadAnnotationsForPdf(pdfName) {
       server_id: ann.server_id,
       x: ann.x,
       y: ann.y,
-      note: ann.note || "",
-      user: ann.user || "",
-      isOwner: ann.is_owner ?? false,
-      upvotes: ann.upvotes || 0,
-      downvotes: ann.downvotes || 0,
-      userVote: ann.user_vote || 0,
-    });
+        note: ann.note || "",
+        user: ann.user || "",
+        isOwner: ann.is_owner ?? false,
+        upvotes: ann.upvotes || 0,
+        downvotes: ann.downvotes || 0,
+        userVote: ann.user_vote || 0,
+        createdAt: ann.created_at || "",
+      });
       (ann.textItems || []).forEach((item) => {
         textItems.push({
           annotationId: ann.id,
@@ -1937,7 +1969,13 @@ svg.addEventListener("pointerdown", (evt) => {
     annotationCounter += 1;
     activeAnnotationId = `ann_${Date.now()}_${annotationCounter}`;
     activeAnnotationViewOnly = false;
-    annotations.set(activeAnnotationId, { id: activeAnnotationId, x: point.x, y: point.y, isOwner: true });
+    annotations.set(activeAnnotationId, {
+      id: activeAnnotationId,
+      x: point.x,
+      y: point.y,
+      isOwner: true,
+      createdAt: new Date().toISOString(),
+    });
     stopAnnotationCreate();
     activateAnnotation(activeAnnotationId, { viewOnly: false });
     evt.preventDefault();
