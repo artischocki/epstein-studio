@@ -9,4 +9,5 @@ urlpatterns = [
     path("register/", views.register, name="register"),
     path("logout/", views.logout_view, name="logout"),
     path("annotations/", views.annotations_api, name="annotations_api"),
+    path("annotation-votes/", views.annotation_votes, name="annotation_votes"),
 ]

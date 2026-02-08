@@ -50,3 +50,13 @@ class PdfDocument(models.Model):
 
     def __str__(self) -> str:
         return self.filename
+
+
+class AnnotationVote(models.Model):
+    """Single user vote (+1 or -1) for an annotation."""
+    annotation = models.ForeignKey(Annotation, on_delete=models.CASCADE, related_name="votes")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    value = models.SmallIntegerField()
+
+    class Meta:
+        unique_together = ("annotation", "user")

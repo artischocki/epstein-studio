@@ -113,6 +113,62 @@ body {
   flex-direction: column;
 }
 
+.annotation-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.annotation-note {
+  background: #1a1f22;
+  border: 1px solid #2a3236;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.annotation-note-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.annotation-note-text {
+  font-size: 13px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.annotation-note-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.vote-btn {
+  background: transparent;
+  border: 1px solid #2a3236;
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vote-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.annotation-notes.hidden {
+  display: none;
+}
+
 .page {
   height: 100vh;
   padding: 28px clamp(20px, 4vw, 52px) 40px;

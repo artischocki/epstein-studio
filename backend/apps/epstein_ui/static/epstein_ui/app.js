@@ -1,6 +1,6 @@
 // --- DOM references ---
 const svg = document.getElementById("overlay");
-window.DEBUG_MODE = false;
+window.DEBUG_MODE = true;
 const DEBUG_PDF_NAME = "EFTA02731646.pdf";
 const viewport = document.getElementById("viewport");
 const pdfPages = document.getElementById("pdfPages");
@@ -25,6 +25,7 @@ const opacityRange = document.getElementById("opacityRange");
 const createAnnotationBtn = document.getElementById("createAnnotationBtn");
 const annotationPrompt = document.getElementById("annotationPrompt");
 const annotationControls = document.getElementById("annotationControls");
+const annotationNotes = document.getElementById("annotationNotes");
 const commitAnnotationBtn = document.getElementById("commitAnnotationBtn");
 const discardAnnotationBtn = document.getElementById("discardAnnotationBtn");
 const randomBtn = document.getElementById("randomBtn");
@@ -146,6 +147,9 @@ function updateAnnotationVisibility() {
     if (heatmapCanvas) {
       heatmapCanvas.style.display = "none";
     }
+    if (annotationNotes) {
+      annotationNotes.classList.add("hidden");
+    }
     annotations.forEach((_, id) => {
       const isActive = id === activeAnnotationId;
       setAnnotationElementsVisible(id, isActive);
@@ -166,6 +170,9 @@ function updateAnnotationVisibility() {
   if (heatmapCanvas) {
     heatmapCanvas.style.display = "";
   }
+  if (annotationNotes) {
+    annotationNotes.classList.remove("hidden");
+  }
   annotations.forEach((_, id) => {
     setAnnotationElementsVisible(id, false);
     const anchor = annotationAnchors.get(id);
@@ -174,6 +181,7 @@ function updateAnnotationVisibility() {
       anchor.style.opacity = "";
     }
   });
+  renderNotesList();
 }
 
 // Find all visual elements that belong to one annotation.
@@ -263,6 +271,7 @@ function commitActiveAnnotation() {
   saveAnnotationsForPdf();
   rebuildHeatmapBase();
   renderHeatmap();
+  renderNotesList();
 }
 
 function ensureLegacyAnnotation() {
@@ -271,6 +280,77 @@ function ensureLegacyAnnotation() {
   activeAnnotationId = `ann_legacy_${annotationCounter}`;
   annotations.set(activeAnnotationId, { id: activeAnnotationId, x: 0, y: 0 });
   return activeAnnotationId;
+}
+
+function renderNotesList() {
+  if (!annotationNotes) return;
+  annotationNotes.innerHTML = "";
+  const items = Array.from(annotations.values()).filter((ann) => (ann.note || "").trim().length > 0);
+  if (!items.length) return;
+  items.forEach((ann) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "annotation-note";
+
+    const meta = document.createElement("div");
+    meta.className = "annotation-note-meta";
+    meta.textContent = ann.user ? `By ${ann.user}` : "By Unknown";
+
+    const text = document.createElement("div");
+    text.className = "annotation-note-text";
+    text.textContent = ann.note;
+
+    const actions = document.createElement("div");
+    actions.className = "annotation-note-actions";
+
+    const upBtn = document.createElement("button");
+    upBtn.className = "vote-btn";
+    upBtn.textContent = `▲ ${ann.upvotes || 0}`;
+    upBtn.disabled = !isAuthenticated || !ann.server_id;
+
+    const downBtn = document.createElement("button");
+    downBtn.className = "vote-btn";
+    downBtn.textContent = `▼ ${ann.downvotes || 0}`;
+    downBtn.disabled = !isAuthenticated || !ann.server_id;
+
+    upBtn.addEventListener("click", async () => {
+      if (!ann.server_id) return;
+      const result = await sendVote(ann.server_id, 1);
+      if (!result) return;
+      ann.upvotes = result.upvotes;
+      ann.downvotes = result.downvotes;
+      renderNotesList();
+    });
+    downBtn.addEventListener("click", async () => {
+      if (!ann.server_id) return;
+      const result = await sendVote(ann.server_id, -1);
+      if (!result) return;
+      ann.upvotes = result.upvotes;
+      ann.downvotes = result.downvotes;
+      renderNotesList();
+    });
+
+    actions.appendChild(upBtn);
+    actions.appendChild(downBtn);
+    wrapper.appendChild(meta);
+    wrapper.appendChild(text);
+    wrapper.appendChild(actions);
+    annotationNotes.appendChild(wrapper);
+  });
+}
+
+async function sendVote(annotationId, value) {
+  try {
+    const response = await fetch("/annotation-votes/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ annotation_id: annotationId, value }),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
 }
 
 function setActiveTab(tabId) {
@@ -1232,6 +1312,7 @@ function loadStateForPdf(key) {
   ensureAnnotationMode();
   rebuildHeatmapBase();
   renderHeatmap();
+  renderNotesList();
 }
 
 async function loadAnnotationsForPdf(pdfName) {
@@ -1247,9 +1328,13 @@ async function loadAnnotationsForPdf(pdfName) {
     data.annotations.forEach((ann) => {
       annotationsPayload.push({
         id: ann.id,
+        server_id: ann.server_id,
         x: ann.x,
         y: ann.y,
         note: ann.note || "",
+        user: ann.user || "",
+        upvotes: ann.upvotes || 0,
+        downvotes: ann.downvotes || 0,
       });
       (ann.textItems || []).forEach((item) => {
         textItems.push({
@@ -1567,6 +1652,7 @@ notesInput.addEventListener("input", () => {
   if (annotation) {
     annotation.note = notesInput.value;
   }
+  renderNotesList();
 });
 
 textLayer.addEventListener("pointerdown", (evt) => {

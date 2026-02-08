@@ -13,8 +13,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Q, Count
 
-from .models import Annotation, TextItem, ArrowItem, PdfDocument
+from .models import Annotation, TextItem, ArrowItem, PdfDocument, AnnotationVote
 
 DATA_DIR = Path(__file__).resolve().parents[3] / "data"
 
@@ -205,13 +206,19 @@ def logout_view(request):
 
 def _annotation_to_dict(annotation: Annotation) -> dict:
     """Serialize Annotation and child items for the frontend."""
+    votes = list(annotation.votes.all())
+    upvotes = sum(1 for v in votes if v.value == 1)
+    downvotes = sum(1 for v in votes if v.value == -1)
     return {
         "id": annotation.client_id,
+        "server_id": annotation.id,
         "pdf": annotation.pdf_key,
         "user": annotation.user.username,
         "x": annotation.x,
         "y": annotation.y,
         "note": annotation.note or "",
+        "upvotes": upvotes,
+        "downvotes": downvotes,
         "textItems": [
             {
                 "x": item.x,
@@ -245,7 +252,7 @@ def annotations_api(request):
         annotations = (
             Annotation.objects.filter(pdf_key=pdf_key)
             .select_related("user")
-            .prefetch_related("text_items", "arrow_items")
+            .prefetch_related("text_items", "arrow_items", "votes")
         )
         return JsonResponse({"annotations": [_annotation_to_dict(a) for a in annotations]})
 
@@ -308,3 +315,39 @@ def annotations_api(request):
         return JsonResponse({"ok": True})
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
+
+
+@csrf_exempt
+def annotation_votes(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Login required"}, status=401)
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    annotation_id = payload.get("annotation_id")
+    value = payload.get("value")
+    if annotation_id is None or value not in (-1, 1):
+        return JsonResponse({"error": "Invalid payload"}, status=400)
+    try:
+        annotation = Annotation.objects.get(id=annotation_id)
+    except Annotation.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    vote, created = AnnotationVote.objects.get_or_create(
+        annotation=annotation,
+        user=request.user,
+        defaults={"value": value},
+    )
+    if not created:
+        if vote.value == value:
+            vote.delete()
+        else:
+            vote.value = value
+            vote.save(update_fields=["value"])
+
+    upvotes = AnnotationVote.objects.filter(annotation=annotation, value=1).count()
+    downvotes = AnnotationVote.objects.filter(annotation=annotation, value=-1).count()
+    return JsonResponse({"upvotes": upvotes, "downvotes": downvotes})
