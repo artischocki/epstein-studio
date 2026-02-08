@@ -533,7 +533,7 @@ function renderNotesList() {
     if (ann.userVote === 1) {
       upBtn.classList.add("active");
     }
-    upBtn.disabled = !isAuthenticated || !ann.server_id;
+    upBtn.disabled = !isAuthenticated || !ann.server_id || ann.isOwner;
 
     const downBtn = document.createElement("button");
     downBtn.className = "vote-btn down";
@@ -541,7 +541,7 @@ function renderNotesList() {
     if (ann.userVote === -1) {
       downBtn.classList.add("active");
     }
-    downBtn.disabled = !isAuthenticated || !ann.server_id;
+    downBtn.disabled = !isAuthenticated || !ann.server_id || ann.isOwner;
 
     upBtn.addEventListener("click", async (evt) => {
       evt.stopPropagation();
@@ -629,13 +629,18 @@ function renderDiscussion(annotationId, comments) {
   const renderNode = (comment, depth) => {
     const item = document.createElement("div");
     item.className = "comment";
+    const currentUserName = document.body.dataset.user || "";
+    if (comment.user === currentUserName) {
+      item.classList.add("comment-own");
+    }
     if (depth > 0) {
       item.style.marginLeft = `${Math.min(depth, 6) * 18}px`;
     }
     const meta = document.createElement("div");
     meta.className = "comment-meta";
     const stamp = formatTimestamp(comment.created_at);
-    meta.textContent = stamp ? `${comment.user} • ${stamp}` : comment.user;
+    const author = comment.user === currentUserName ? "You" : comment.user;
+    meta.textContent = stamp ? `${author} • ${stamp}` : author;
     const body = document.createElement("div");
     body.className = "comment-body";
     body.textContent = comment.body;
@@ -646,7 +651,8 @@ function renderDiscussion(annotationId, comments) {
     upBtn.className = "vote-btn up";
     upBtn.innerHTML = `<img class="vote-icon" src="/static/epstein_ui/icons/arrow-big-up.svg" alt="" />`;
     if (comment.user_vote === 1) upBtn.classList.add("active");
-    upBtn.disabled = !isAuthenticated;
+    const commentOwner = comment.user === currentUserName;
+    upBtn.disabled = !isAuthenticated || commentOwner;
     upBtn.addEventListener("click", async (evt) => {
       evt.stopPropagation();
       const result = await sendCommentVote(comment.id, 1);
@@ -661,7 +667,7 @@ function renderDiscussion(annotationId, comments) {
     downBtn.className = "vote-btn down";
     downBtn.innerHTML = `<img class="vote-icon" src="/static/epstein_ui/icons/arrow-big-down.svg" alt="" />`;
     if (comment.user_vote === -1) downBtn.classList.add("active");
-    downBtn.disabled = !isAuthenticated;
+    downBtn.disabled = !isAuthenticated || commentOwner;
     downBtn.addEventListener("click", async (evt) => {
       evt.stopPropagation();
       const result = await sendCommentVote(comment.id, -1);
@@ -711,8 +717,7 @@ function renderDiscussion(annotationId, comments) {
     deleteBtn.className = "comment-delete";
     deleteBtn.type = "button";
     deleteBtn.textContent = "Delete";
-    const currentUser = document.body.dataset.user || "";
-    const canDelete = isAuthenticated && currentUser && comment.user === currentUser;
+    const canDelete = isAuthenticated && currentUserName && comment.user === currentUserName;
     deleteBtn.classList.toggle("hidden", !canDelete);
     deleteBtn.disabled = !canDelete;
     deleteBtn.addEventListener("click", async () => {
