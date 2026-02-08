@@ -254,17 +254,12 @@ function ensureHeatmapCanvas() {
   const parentRect = heatmapCanvas.parentElement?.getBoundingClientRect();
   if (!parentRect) return;
   const dpr = window.devicePixelRatio || 1;
-  const scale = Math.min(svgRect.width / VIEW_W, svgRect.height / VIEW_H);
-  const renderW = VIEW_W * scale;
-  const renderH = VIEW_H * scale;
-  const offsetX = (svgRect.width - renderW) / 2;
-  const offsetY = (svgRect.height - renderH) / 2;
-  heatmapCanvas.style.left = `${svgRect.left - parentRect.left + offsetX}px`;
-  heatmapCanvas.style.top = `${svgRect.top - parentRect.top + offsetY}px`;
-  heatmapCanvas.style.width = `${renderW}px`;
-  heatmapCanvas.style.height = `${renderH}px`;
-  const targetW = Math.max(1, Math.round(renderW * dpr));
-  const targetH = Math.max(1, Math.round(renderH * dpr));
+  heatmapCanvas.style.left = `${svgRect.left - parentRect.left}px`;
+  heatmapCanvas.style.top = `${svgRect.top - parentRect.top}px`;
+  heatmapCanvas.style.width = `${svgRect.width}px`;
+  heatmapCanvas.style.height = `${svgRect.height}px`;
+  const targetW = Math.max(1, Math.round(svgRect.width * dpr));
+  const targetH = Math.max(1, Math.round(svgRect.height * dpr));
   if (heatmapCanvas.width !== targetW || heatmapCanvas.height !== targetH) {
     heatmapCanvas.width = targetW;
     heatmapCanvas.height = targetH;
@@ -345,10 +340,13 @@ function renderHeatmap() {
   if (!heatmapCtx) return;
   heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
   if (!heatmapBase) return;
-  const scaleX = (heatmapCanvas.width / VIEW_W) * view.scale;
-  const scaleY = (heatmapCanvas.height / VIEW_H) * view.scale;
-  const translateX = (heatmapCanvas.width / VIEW_W) * view.x;
-  const translateY = (heatmapCanvas.height / VIEW_H) * view.y;
+  const baseScale = Math.min(heatmapCanvas.width / VIEW_W, heatmapCanvas.height / VIEW_H);
+  const baseOffsetX = (heatmapCanvas.width - VIEW_W * baseScale) / 2;
+  const baseOffsetY = (heatmapCanvas.height - VIEW_H * baseScale) / 2;
+  const scaleX = baseScale * view.scale;
+  const scaleY = baseScale * view.scale;
+  const translateX = baseOffsetX + baseScale * view.x;
+  const translateY = baseOffsetY + baseScale * view.y;
   heatmapCtx.setTransform(
     scaleX,
     0,
