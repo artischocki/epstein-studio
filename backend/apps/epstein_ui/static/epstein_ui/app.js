@@ -37,6 +37,7 @@ const notesInput = document.getElementById("notesInput");
 const boldToggle = document.getElementById("boldToggle");
 const italicToggle = document.getElementById("italicToggle");
 const contextMenu = document.getElementById("contextMenu");
+const colorSwatch = document.getElementById("colorSwatch");
 const isAuthenticated = document.body.dataset.auth === "1";
 
 // --- Shared state (viewport, active elements, annotations) ---
@@ -470,6 +471,10 @@ function applyStylesToGroup(group) {
   editor.style.opacity = opacity;
   box.style.stroke = colorPicker.value;
   handle.style.fill = colorPicker.value;
+  if (colorSwatch) {
+    const swatch = colorSwatch.querySelector(".swatch-letter");
+    if (swatch) swatch.style.color = colorPicker.value;
+  }
   updateBox(group);
 }
 
@@ -507,6 +512,10 @@ function setActiveGroup(group) {
   kerningToggle.classList.toggle("active", kerningOn);
   kerningToggle.textContent = kerningOn ? "On" : "Off";
   colorPicker.value = rgbToHex(computed.color || "#39ff14");
+  if (colorSwatch) {
+    const swatch = colorSwatch.querySelector(".swatch-letter");
+    if (swatch) swatch.style.color = colorPicker.value;
+  }
   opacityRange.value = Math.round((parseFloat(computed.opacity) || 1) * 100);
   boldToggle.classList.toggle("active", computed.fontWeight === "700" || computed.fontWeight === "bold");
   italicToggle.classList.toggle("active", computed.fontStyle === "italic");
@@ -1494,10 +1503,17 @@ kerningToggle.addEventListener("click", () => {
   }
 });
 colorPicker.addEventListener("input", () => {
+  if (colorSwatch) {
+    const swatch = colorSwatch.querySelector(".swatch-letter");
+    if (swatch) swatch.style.color = colorPicker.value;
+  }
   if (activeGroup) {
     applyStylesToGroup(activeGroup);
   }
 });
+if (colorSwatch && colorPicker) {
+  colorSwatch.addEventListener("click", () => colorPicker.click());
+}
 opacityRange.addEventListener("input", () => {
   if (activeGroup) {
     applyStylesToGroup(activeGroup);
