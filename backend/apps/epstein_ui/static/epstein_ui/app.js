@@ -535,15 +535,28 @@ function renderNotesList() {
       if (anchor) {
         anchor.setAttribute("r", "10");
       }
+      if (!activeAnnotationId && !activeAnnotationViewOnly) {
+        setAnnotationElementsVisible(ann.id, true);
+      }
     });
     wrapper.addEventListener("mouseleave", () => {
       const anchor = annotationAnchors.get(ann.id);
       if (anchor) {
         anchor.setAttribute("r", "6");
       }
+      if (!activeAnnotationId && !activeAnnotationViewOnly) {
+        setAnnotationElementsVisible(ann.id, false);
+      }
     });
     wrapper.addEventListener("click", () => {
-      if (ann.isOwner) return;
+      if (ann.isOwner) {
+        if (activeAnnotationId === ann.id && !activeAnnotationViewOnly) {
+          clearActiveAnnotation();
+          return;
+        }
+        activateAnnotation(ann.id, { viewOnly: false });
+        return;
+      }
       if (activeAnnotationId === ann.id && activeAnnotationViewOnly) {
         clearActiveAnnotation();
         return;
