@@ -30,6 +30,7 @@ const discardAnnotationBtn = document.getElementById("discardAnnotationBtn");
 const randomBtn = document.getElementById("randomBtn");
 const searchInput = document.getElementById("searchInput");
 const searchBtn = document.getElementById("searchBtn");
+const suggestionsList = document.getElementById("pdfSuggestions");
 const tabs = document.querySelectorAll(".tab");
 const panels = document.querySelectorAll(".tab-panel");
 const notesInput = document.getElementById("notesInput");
@@ -76,6 +77,7 @@ const annotationAnchors = new Map();
 let heatmapCtx = null;
 let heatmapBase = null;
 let suppressNextTextCreate = false;
+let suggestionTimer = null;
 
 sizeRange.value = DEFAULT_TEXT_SIZE;
 sizeInput.value = DEFAULT_TEXT_SIZE;
@@ -1509,6 +1511,28 @@ searchInput.addEventListener("keydown", (evt) => {
   if (evt.key === "Enter") {
     searchPdf();
   }
+});
+searchInput.addEventListener("input", () => {
+  if (!suggestionsList) return;
+  if (suggestionTimer) {
+    clearTimeout(suggestionTimer);
+  }
+  const query = searchInput.value.trim();
+  suggestionTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`/search-suggestions/?q=${encodeURIComponent(query)}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      suggestionsList.innerHTML = "";
+      (data.suggestions || []).forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        suggestionsList.appendChild(option);
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  }, 120);
 });
 
 notesInput.addEventListener("input", () => {

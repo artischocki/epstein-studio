@@ -173,6 +173,17 @@ def search_pdf(request):
     })
 
 
+def search_suggestions(request):
+    """Return filename suggestions for the search box."""
+    query = (request.GET.get("q") or "").strip()
+    _sync_pdf_index()
+    qs = PdfDocument.objects.all()
+    if query:
+        qs = qs.filter(filename__icontains=query)
+    suggestions = list(qs.order_by("filename").values_list("filename", flat=True)[:12])
+    return JsonResponse({"suggestions": suggestions})
+
+
 def register(request):
     """Simple username/password registration with auto-login."""
     if request.method == "POST":
