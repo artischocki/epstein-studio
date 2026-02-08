@@ -127,6 +127,8 @@ body {
 
 #annotationViewBack {
   margin-top: 10px;
+  align-self: flex-end;
+  width: auto;
 }
 
 .annotation-panel {
