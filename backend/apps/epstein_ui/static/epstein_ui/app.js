@@ -2582,6 +2582,12 @@ svg.addEventListener("mouseleave", () => {
 
 svg.addEventListener("mousemove", (evt) => {
   const circle = ensureHoverCircle();
+  if (hoveredAnchorId) {
+    const overAnchor = evt.target.closest(".annotation-anchor");
+    if (!overAnchor) {
+      clearHoveredAnchor();
+    }
+  }
   const point = svgPointInViewport(evt);
   lastHoverPoint = point;
   circle.setAttribute("cx", point.x);
