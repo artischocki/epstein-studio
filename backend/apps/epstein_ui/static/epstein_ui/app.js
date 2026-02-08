@@ -1404,7 +1404,7 @@ function syncPages(pages, pdfName) {
   hasUserZoomed = false;
   fitToView(true);
   if (pdfName) {
-    fileTitle.textContent = pdfName;
+    fileTitle.textContent = pdfName.replace(/\.pdf$/i, "");
     currentPdfKey = pdfName;
   }
   loadStateForPdf(currentPdfKey);
