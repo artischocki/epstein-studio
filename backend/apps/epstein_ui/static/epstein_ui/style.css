@@ -1010,6 +1010,10 @@ image {
   display: block;
 }
 
+#minimapHeatmap {
+  opacity: 0.6;
+}
+
 #minimapViewport {
   fill: rgba(57, 255, 20, 0.15);
   stroke: rgba(57, 255, 20, 0.9);

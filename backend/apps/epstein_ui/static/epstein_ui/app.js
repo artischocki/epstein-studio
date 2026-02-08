@@ -11,6 +11,7 @@ const minimapScroll = document.querySelector(".minimap-scroll");
 const minimapJump = document.getElementById("minimapJump");
 const minimapPageInput = document.getElementById("minimapPageInput");
 const minimapPages = document.getElementById("minimapPages");
+const minimapHeatmap = document.getElementById("minimapHeatmap");
 const minimapViewport = document.getElementById("minimapViewport");
 const fileTitle = document.getElementById("fileTitle");
 const textLayer = document.getElementById("textLayer");
@@ -96,6 +97,7 @@ let annotationPreview = null;
 const annotationAnchors = new Map();
 let heatmapCtx = null;
 let heatmapBase = null;
+let minimapHeatmapBase = null;
 let suppressNextTextCreate = false;
 let suggestionTimer = null;
 let commentCache = new Map();
@@ -984,6 +986,7 @@ function rebuildHeatmapBase() {
   heatmapBase.width = off.width;
   heatmapBase.height = off.height;
   heatmapBase.getContext("2d").putImageData(img, 0, 0);
+  updateMinimapHeatmap();
 }
 
 // Draw the base heatmap into the visible canvas using the current view transform.
@@ -1019,6 +1022,21 @@ function renderHeatmap() {
     heatmapCtx.restore();
   }
   heatmapCtx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function updateMinimapHeatmap() {
+  if (!minimapHeatmap) return;
+  if (!heatmapBase) {
+    minimapHeatmap.removeAttribute("href");
+    minimapHeatmap.style.display = "none";
+    return;
+  }
+  minimapHeatmap.style.display = "";
+  minimapHeatmap.setAttribute("x", 0);
+  minimapHeatmap.setAttribute("y", 0);
+  minimapHeatmap.setAttribute("width", canvasSize.width);
+  minimapHeatmap.setAttribute("height", canvasSize.height);
+  minimapHeatmap.setAttribute("href", heatmapBase.toDataURL());
 }
 
 function clampViewX() {
@@ -1791,6 +1809,7 @@ function clearOverlays() {
     heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
   }
   heatmapBase = null;
+  updateMinimapHeatmap();
   annotationAnchors.forEach((anchor) => anchor.remove());
   annotationAnchors.clear();
   activeGroup = null;
