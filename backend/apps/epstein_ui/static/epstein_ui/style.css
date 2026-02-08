@@ -853,6 +853,14 @@ image {
   stroke: #2a2204;
 }
 
+.hover-circle {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
 .text-group:not(.active) .text-box,
 .text-group:not(.active) .resize-handle {
   display: none;

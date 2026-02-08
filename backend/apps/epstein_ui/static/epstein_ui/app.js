@@ -100,6 +100,8 @@ let suppressNextTextCreate = false;
 let suggestionTimer = null;
 let commentCache = new Map();
 let pendingConfirm = null;
+let hoverCircle = null;
+let lastHoverPoint = null;
 
 function formatTimestamp(value, { dateOnly = false } = {}) {
   if (!value) return "";
@@ -393,6 +395,17 @@ function ensureAnnotationAnchor(id) {
   anchor.setAttribute("cx", data.x);
   anchor.setAttribute("cy", data.y);
   return anchor;
+}
+
+function ensureHoverCircle() {
+  if (hoverCircle) return hoverCircle;
+  hoverCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  hoverCircle.classList.add("hover-circle");
+  hoverCircle.setAttribute("r", "1");
+  hoverCircle.setAttribute("vector-effect", "non-scaling-stroke");
+  hoverCircle.style.display = "none";
+  viewport.appendChild(hoverCircle);
+  return hoverCircle;
 }
 
 // Drop active annotation and its elements, then persist.
@@ -2437,6 +2450,36 @@ minimapPageInput.addEventListener("change", () => {
   if (!Number.isNaN(value)) {
     scrollMinimapToPage(value);
   }
+});
+
+svg.addEventListener("mouseenter", () => {
+  const circle = ensureHoverCircle();
+  circle.style.display = "";
+});
+
+svg.addEventListener("mouseleave", () => {
+  if (hoverCircle) hoverCircle.style.display = "none";
+});
+
+svg.addEventListener("mousemove", (evt) => {
+  const circle = ensureHoverCircle();
+  const point = svgPointInViewport(evt);
+  lastHoverPoint = point;
+  circle.setAttribute("cx", point.x);
+  circle.setAttribute("cy", point.y);
+  const svgRect = svg.getBoundingClientRect();
+  const pxPerSvg = svgRect.width / VIEW_W;
+  const radius = 30 / Math.max(0.0001, pxPerSvg * view.scale);
+  circle.setAttribute("r", radius.toFixed(3));
+  circle.style.display = "";
+});
+
+svg.addEventListener("wheel", () => {
+  if (!hoverCircle || !lastHoverPoint) return;
+  const svgRect = svg.getBoundingClientRect();
+  const pxPerSvg = svgRect.width / VIEW_W;
+  const radius = 30 / Math.max(0.0001, pxPerSvg * view.scale);
+  hoverCircle.setAttribute("r", radius.toFixed(3));
 });
 
 contextMenu.addEventListener("click", (evt) => {
