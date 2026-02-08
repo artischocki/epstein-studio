@@ -288,6 +288,12 @@ body {
   gap: 16px;
 }
 
+.browse-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .browse-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -297,6 +303,8 @@ body {
   padding: 18px;
   box-shadow: var(--shadow);
   min-height: 200px;
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
 }
 
 .browse-card {
@@ -324,6 +332,21 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.browse-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.browse-meta img {
+  width: 14px;
+  height: 14px;
+  filter: brightness(0) saturate(100%) invert(79%) sepia(6%) saturate(223%) hue-rotate(167deg)
+    brightness(90%) contrast(87%);
 }
 
 .browse-actions {

@@ -14,6 +14,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.views.decorators.csrf import csrf_exempt
 from django.db.utils import OperationalError, ProgrammingError
+from django.db.models import Count, Q
 
 from .models import Annotation, TextItem, ArrowItem, PdfDocument, AnnotationVote, AnnotationComment, CommentVote, PdfVote
 
@@ -218,6 +219,8 @@ def search_suggestions(request):
 def browse_list(request):
     """Return paginated PDF filenames for browsing."""
     page = request.GET.get("page") or "1"
+    sort = (request.GET.get("sort") or "name").lower()
+    query = (request.GET.get("q") or "").strip()
     try:
         page_num = max(1, int(page))
     except ValueError:
@@ -228,15 +231,39 @@ def browse_list(request):
     except (OperationalError, ProgrammingError):
         pass
     qs = PdfDocument.objects.order_by("filename")
+    if query:
+        qs = qs.filter(filename__icontains=query)
     total = qs.count()
     start = (page_num - 1) * page_size
     end = start + page_size
-    items = list(qs.values_list("filename", flat=True)[start:end])
-    has_more = end < total
-    payload = [
-        {"filename": name, "slug": name.replace(".pdf", "")} for name in items
+    docs = list(qs[start:end])
+    doc_ids = [doc.id for doc in docs]
+    vote_map = {}
+    if doc_ids:
+        vote_rows = (
+            PdfVote.objects.filter(pdf_id__in=doc_ids)
+            .values("pdf_id")
+            .annotate(
+                upvotes=Count("id", filter=Q(value=1)),
+                downvotes=Count("id", filter=Q(value=-1)),
+            )
+        )
+        vote_map = {
+            row["pdf_id"]: (row["upvotes"] or 0) - (row["downvotes"] or 0)
+            for row in vote_rows
+        }
+    items = [
+        {
+            "filename": doc.filename,
+            "slug": doc.filename.replace(".pdf", ""),
+            "upvotes": vote_map.get(doc.id, 0),
+        }
+        for doc in docs
     ]
-    return JsonResponse({"items": payload, "page": page_num, "has_more": has_more})
+    if sort in ("promising", "least"):
+        items.sort(key=lambda item: item["upvotes"], reverse=sort == "promising")
+    has_more = end < total
+    return JsonResponse({"items": items, "page": page_num, "has_more": has_more})
 
 
 @csrf_exempt

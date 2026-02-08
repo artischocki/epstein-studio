@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Epstein Studio</title>
-    <link rel="icon" href="{% static 'epstein_ui/icons/favicon.ico' %}" />
+    <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
     <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}?v=2" />
   </head>
   <body data-auth="{% if request.user.is_authenticated %}1{% else %}0{% endif %}" data-user="{{ request.user.username|default:'' }}">
@@ -36,10 +36,20 @@
       <main class="browse-layout">
         <div class="browse-header">
           <div>
-            <div class="file-title">Browse PDFs</div>
-            <div class="hint">Loaded in pages to keep the list fast.</div>
+            <div class="file-title">Browse PDF Files</div>
           </div>
-          <a class="btn btn-secondary" href="/">Back to Canvas</a>
+          <div class="browse-header-actions">
+            <div class="search-wrap">
+              <input id="browseSearch" type="text" placeholder="Search PDF File..." />
+            </div>
+            <select id="browseSort" class="btn btn-secondary" aria-label="Sort">
+              <option value="name" selected>Alphanumerical</option>
+              <option value="promising">Most Promising</option>
+              <option value="least">Least Promising</option>
+            </select>
+            <button id="browseRandom" class="btn btn-secondary" type="button">Random File</button>
+            <a class="btn btn-secondary" href="/">Back to Canvas</a>
+          </div>
         </div>
         <div id="browseList" class="browse-list"></div>
         <div class="browse-actions">
