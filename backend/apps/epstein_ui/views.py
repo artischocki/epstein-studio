@@ -254,6 +254,7 @@ def _annotation_to_dict(annotation: Annotation, request=None) -> dict:
         "upvotes": upvotes,
         "downvotes": downvotes,
         "user_vote": user_vote,
+        "hash": str(annotation.hash) if annotation.hash else "",
         "created_at": annotation.created_at.isoformat() if annotation.created_at else None,
         "textItems": [
             {
@@ -311,7 +312,7 @@ def annotations_api(request):
             if not client_id:
                 continue
             seen_ids.add(client_id)
-            annotation_obj, _ = Annotation.objects.update_or_create(
+            annotation_obj, created = Annotation.objects.update_or_create(
                 pdf_key=pdf_key,
                 user=request.user,
                 client_id=client_id,
@@ -321,6 +322,11 @@ def annotations_api(request):
                     "note": ann.get("note") or "",
                 },
             )
+            if created:
+                ann_hash = ann.get("hash")
+                if ann_hash:
+                    annotation_obj.hash = ann_hash
+                    annotation_obj.save(update_fields=["hash"])
             TextItem.objects.filter(annotation=annotation_obj).delete()
             ArrowItem.objects.filter(annotation=annotation_obj).delete()
 

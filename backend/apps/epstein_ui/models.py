@@ -1,10 +1,12 @@
 """Database models for per-PDF annotation data."""
+import uuid
 from django.conf import settings
 from django.db import models
 
 
 class Annotation(models.Model):
     """Top-level annotation anchor tied to a PDF and user."""
+    hash = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     pdf_key = models.CharField(max_length=255, db_index=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     client_id = models.CharField(max_length=64)

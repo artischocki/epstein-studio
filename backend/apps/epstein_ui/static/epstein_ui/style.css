@@ -114,6 +114,12 @@ body {
   margin-bottom: 6px;
 }
 
+.annotation-view-hash {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
 .annotation-view-note {
   font-size: 14px;
   line-height: 1.5;

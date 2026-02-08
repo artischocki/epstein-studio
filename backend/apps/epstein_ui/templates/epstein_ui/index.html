@@ -4,7 +4,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Redaction Overlay Studio</title>
+    <title>Epstein Studio</title>
+    <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
     <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
   </head>
   <body data-auth="{% if user.is_authenticated %}1{% else %}0{% endif %}">
@@ -56,6 +57,7 @@
             </div>
             <div class="tab-panel active" data-panel="notes">
               <div id="annotationViewTitle" class="annotation-view-title hidden"></div>
+              <div id="annotationViewHash" class="annotation-view-hash hidden"></div>
               <div id="annotationViewNote" class="annotation-view-note hidden"></div>
               <button id="annotationViewBack" class="btn btn-outline hidden" type="button">Back</button>
               <label class="field">

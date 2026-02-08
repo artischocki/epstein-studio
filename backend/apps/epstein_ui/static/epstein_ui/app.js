@@ -43,6 +43,7 @@ const contextMenu = document.getElementById("contextMenu");
 const colorSwatch = document.getElementById("colorSwatch");
 const annotationTabs = document.getElementById("annotationTabs");
 const annotationViewTitle = document.getElementById("annotationViewTitle");
+const annotationViewHash = document.getElementById("annotationViewHash");
 const annotationViewNote = document.getElementById("annotationViewNote");
 const annotationViewBack = document.getElementById("annotationViewBack");
 const isAuthenticated = document.body.dataset.auth === "1";
@@ -108,6 +109,13 @@ function formatTimestamp(value, { dateOnly = false } = {}) {
     return `${m} ${d}, ${year} ${h}:${min}`;
   }
   return `${m} ${d}, ${h}:${min}`;
+}
+
+function generateHash() {
+  if (window.crypto && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `h_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 10)}`;
 }
 
 sizeRange.value = DEFAULT_TEXT_SIZE;
@@ -181,6 +189,7 @@ function updateAnnotationPanelMode() {
     activeAnnotationViewOnly = false;
     if (annotationTabs) annotationTabs.classList.remove("hidden");
     if (annotationViewTitle) annotationViewTitle.classList.add("hidden");
+    if (annotationViewHash) annotationViewHash.classList.add("hidden");
     if (annotationViewNote) annotationViewNote.classList.add("hidden");
     if (annotationViewBack) annotationViewBack.classList.add("hidden");
     tabsList.forEach((tab) => {
@@ -198,6 +207,7 @@ function updateAnnotationPanelMode() {
   if (activeAnnotationViewOnly) {
     if (annotationTabs) annotationTabs.classList.add("hidden");
     if (annotationViewTitle) annotationViewTitle.classList.remove("hidden");
+    if (annotationViewHash) annotationViewHash.classList.remove("hidden");
     if (annotationViewNote) annotationViewNote.classList.remove("hidden");
     if (annotationViewBack) annotationViewBack.classList.remove("hidden");
     if (notesInput) notesInput.closest(".field")?.classList.add("hidden");
@@ -206,6 +216,10 @@ function updateAnnotationPanelMode() {
       const name = ann?.user || "Unknown";
       const stamp = formatTimestamp(ann?.createdAt);
       annotationViewTitle.textContent = stamp ? `${name}: ${stamp}` : `${name}:`;
+    }
+    if (annotationViewHash) {
+      const ann = annotations.get(activeAnnotationId);
+      annotationViewHash.textContent = ann?.hash ? `${ann.hash}` : "";
     }
     if (annotationViewNote) {
       const ann = annotations.get(activeAnnotationId);
@@ -221,6 +235,11 @@ function updateAnnotationPanelMode() {
   } else {
     if (annotationTabs) annotationTabs.classList.remove("hidden");
     if (annotationViewTitle) annotationViewTitle.classList.add("hidden");
+    if (annotationViewHash) {
+      const ann = annotations.get(activeAnnotationId);
+      annotationViewHash.textContent = ann?.hash ? `${ann.hash}` : "";
+      annotationViewHash.classList.toggle("hidden", !ann?.hash);
+    }
     if (annotationViewNote) annotationViewNote.classList.add("hidden");
     if (annotationViewBack) annotationViewBack.classList.add("hidden");
     if (notesInput) notesInput.classList.remove("hidden");
@@ -246,6 +265,9 @@ function activateAnnotation(id, { viewOnly = false } = {}) {
   }
   if (annotationViewNote && ann) {
     annotationViewNote.textContent = ann.note || "";
+  }
+  if (annotationViewHash && ann) {
+    annotationViewHash.textContent = ann.hash ? `${ann.hash}` : "";
   }
   ensureAnnotationMode();
   setAnnotationElementsVisible(id, true);
@@ -418,6 +440,7 @@ function ensureLegacyAnnotation() {
     x: 0,
     y: 0,
     isOwner: true,
+    hash: generateHash(),
     createdAt: new Date().toISOString(),
   });
   return activeAnnotationId;
@@ -1592,6 +1615,7 @@ async function loadAnnotationsForPdf(pdfName) {
         upvotes: ann.upvotes || 0,
         downvotes: ann.downvotes || 0,
         userVote: ann.user_vote || 0,
+        hash: ann.hash || "",
         createdAt: ann.created_at || "",
       });
       (ann.textItems || []).forEach((item) => {
@@ -1680,6 +1704,7 @@ async function saveAnnotationsForPdf() {
         x: ann.x,
         y: ann.y,
         note: ann.note || "",
+        hash: ann.hash || "",
         textItems,
         arrows,
       };
@@ -2033,6 +2058,7 @@ svg.addEventListener("pointerdown", (evt) => {
       x: point.x,
       y: point.y,
       isOwner: true,
+      hash: generateHash(),
       createdAt: new Date().toISOString(),
     });
     stopAnnotationCreate();
