@@ -3,6 +3,7 @@ window.DEBUG_MODE = true;
 const DEBUG_PDF_NAME = "EFTA02731646.pdf";
 const viewport = document.getElementById("viewport");
 const pdfPages = document.getElementById("pdfPages");
+const heatmapCanvas = document.getElementById("heatmapCanvas");
 const hintLayer = document.getElementById("hintLayer");
 const minimapSvg = document.getElementById("minimapSvg");
 const minimapScroll = document.querySelector(".minimap-scroll");
@@ -70,6 +71,7 @@ let annotationCounter = 0;
 const annotations = new Map();
 let annotationPreview = null;
 const annotationAnchors = new Map();
+let heatmapCtx = null;
 let suppressNextTextCreate = false;
 
 sizeRange.value = DEFAULT_TEXT_SIZE;
@@ -193,6 +195,7 @@ function discardActiveAnnotation() {
   activeAnnotationId = null;
   ensureAnnotationMode();
   saveAnnotationsForPdf();
+  renderHeatmap();
 }
 
 function commitActiveAnnotation() {
@@ -203,6 +206,7 @@ function commitActiveAnnotation() {
   activeAnnotationId = null;
   ensureAnnotationMode();
   saveAnnotationsForPdf();
+  renderHeatmap();
 }
 
 function ensureLegacyAnnotation() {
@@ -235,6 +239,88 @@ function setTranslate(group, x, y) {
 function setViewportTransform() {
   viewport.setAttribute("transform", `translate(${view.x} ${view.y}) scale(${view.scale})`);
   updateMinimapViewport();
+  updateHeatmapTransform();
+}
+
+function ensureHeatmapCanvas() {
+  if (!heatmapCanvas) return;
+  if (!heatmapCtx) {
+    heatmapCtx = heatmapCanvas.getContext("2d");
+  }
+  if (heatmapCanvas.width !== canvasSize.width || heatmapCanvas.height !== canvasSize.height) {
+    heatmapCanvas.width = canvasSize.width;
+    heatmapCanvas.height = canvasSize.height;
+  }
+}
+
+function updateHeatmapTransform() {
+  if (!heatmapCanvas) return;
+  heatmapCanvas.style.transformOrigin = "0 0";
+  heatmapCanvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+}
+
+function renderHeatmap() {
+  if (!heatmapCanvas) return;
+  ensureHeatmapCanvas();
+  if (!heatmapCtx) return;
+  heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+  const items = Array.from(annotations.values());
+  if (!items.length) return;
+
+  const off = document.createElement("canvas");
+  off.width = heatmapCanvas.width;
+  off.height = heatmapCanvas.height;
+  const offCtx = off.getContext("2d");
+  offCtx.clearRect(0, 0, off.width, off.height);
+  offCtx.filter = "blur(18px)";
+
+  const radius = 70;
+  items.forEach((ann) => {
+    const grad = offCtx.createRadialGradient(ann.x, ann.y, 0, ann.x, ann.y, radius);
+    grad.addColorStop(0, "rgba(0,0,0,0.6)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    offCtx.fillStyle = grad;
+    offCtx.beginPath();
+    offCtx.arc(ann.x, ann.y, radius, 0, Math.PI * 2);
+    offCtx.fill();
+  });
+
+  const img = offCtx.getImageData(0, 0, off.width, off.height);
+  const data = img.data;
+  const ramp = [
+    { t: 0.0, c: [30, 76, 255] },
+    { t: 0.45, c: [59, 214, 255] },
+    { t: 0.75, c: [255, 232, 74] },
+    { t: 1.0, c: [255, 59, 47] },
+  ];
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const colorAt = (t) => {
+    let i = 0;
+    while (i < ramp.length - 1 && t > ramp[i + 1].t) i += 1;
+    const left = ramp[i];
+    const right = ramp[i + 1];
+    const local = (t - left.t) / Math.max(1e-6, right.t - left.t);
+    return [
+      Math.round(lerp(left.c[0], right.c[0], local)),
+      Math.round(lerp(left.c[1], right.c[1], local)),
+      Math.round(lerp(left.c[2], right.c[2], local)),
+    ];
+  };
+
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3] / 255;
+    if (alpha <= 0.02) {
+      data[i + 3] = 0;
+      continue;
+    }
+    const t = Math.min(1, alpha);
+    const [r, g, b] = colorAt(t);
+    data[i] = r;
+    data[i + 1] = g;
+    data[i + 2] = b;
+    data[i + 3] = Math.round(255 * (0.5 * t));
+  }
+  heatmapCtx.putImageData(img, 0, 0);
 }
 
 function clampViewX() {
@@ -960,6 +1046,9 @@ function clearOverlays() {
   while (hintLayer.firstChild) {
     hintLayer.removeChild(hintLayer.firstChild);
   }
+  if (heatmapCtx) {
+    heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+  }
   annotationAnchors.forEach((anchor) => anchor.remove());
   annotationAnchors.clear();
   activeGroup = null;
@@ -970,6 +1059,7 @@ function clearOverlays() {
   stopAnnotationCreate();
   ensureAnnotationMode();
   updateTabStates();
+  renderHeatmap();
 }
 
 function serializeCurrentState() {
@@ -1037,6 +1127,7 @@ function loadStateForPdf(key) {
   });
   activeAnnotationId = null;
   ensureAnnotationMode();
+  renderHeatmap();
 }
 
 async function loadAnnotationsForPdf(pdfName) {
@@ -1084,6 +1175,7 @@ async function loadAnnotationsForPdf(pdfName) {
     });
     pdfState.set(pdfName, { annotations: annotationsPayload, textItems, arrows });
     loadStateForPdf(pdfName);
+    renderHeatmap();
   } catch (err) {
     console.error(err);
   }
