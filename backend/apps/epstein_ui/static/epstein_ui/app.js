@@ -26,6 +26,8 @@ const createAnnotationBtn = document.getElementById("createAnnotationBtn");
 const annotationPrompt = document.getElementById("annotationPrompt");
 const annotationControls = document.getElementById("annotationControls");
 const annotationNotes = document.getElementById("annotationNotes");
+const annotationSort = document.getElementById("annotationSort");
+const annotationSortSelect = document.getElementById("annotationSortSelect");
 const commitAnnotationBtn = document.getElementById("commitAnnotationBtn");
 const discardAnnotationBtn = document.getElementById("discardAnnotationBtn");
 const randomBtn = document.getElementById("randomBtn");
@@ -262,6 +264,9 @@ function updateAnnotationVisibility() {
     if (annotationNotes) {
       annotationNotes.classList.add("hidden");
     }
+    if (annotationSort) {
+      annotationSort.classList.add("hidden");
+    }
     annotations.forEach((_, id) => {
       const isActive = id === activeAnnotationId;
       setAnnotationElementsVisible(id, isActive);
@@ -284,6 +289,9 @@ function updateAnnotationVisibility() {
   }
   if (annotationNotes) {
     annotationNotes.classList.remove("hidden");
+  }
+  if (annotationSort) {
+    annotationSort.classList.remove("hidden");
   }
   annotations.forEach((_, id) => {
     setAnnotationElementsVisible(id, false);
@@ -422,13 +430,34 @@ function renderNotesList() {
   const mine = items.filter((ann) => ann.isOwner);
   const others = items.filter((ann) => !ann.isOwner);
 
-  const renderSection = (title, list, showHeader) => {
+  mine.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const sortMode = annotationSortSelect?.value || "upvotes";
+  if (sortMode === "newest") {
+    others.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  } else if (sortMode === "oldest") {
+    others.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  } else {
+    others.sort((a, b) => (b.upvotes || 0) - (b.downvotes || 0) - ((a.upvotes || 0) - (a.downvotes || 0)));
+  }
+
+  const renderSection = (title, list, showHeader, showSort = false) => {
     if (!list.length) return;
     if (showHeader) {
       const header = document.createElement("div");
       header.className = "annotation-section-title";
       header.textContent = title;
-      annotationNotes.appendChild(header);
+      if (showSort && annotationSort) {
+        const row = document.createElement("div");
+        row.className = "annotation-section-row";
+        row.appendChild(header);
+        row.appendChild(annotationSort);
+        annotationNotes.appendChild(row);
+      } else {
+        annotationNotes.appendChild(header);
+      }
+    }
+    if (showSort && annotationSort) {
+      annotationSort.classList.remove("hidden");
     }
     list.forEach((ann) => {
     const wrapper = document.createElement("div");
@@ -468,7 +497,8 @@ function renderNotesList() {
     }
     downBtn.disabled = !isAuthenticated || !ann.server_id;
 
-    upBtn.addEventListener("click", async () => {
+    upBtn.addEventListener("click", async (evt) => {
+      evt.stopPropagation();
       if (!ann.server_id) return;
       const result = await sendVote(ann.server_id, 1);
       if (!result) return;
@@ -477,7 +507,8 @@ function renderNotesList() {
       ann.userVote = result.user_vote || 0;
       renderNotesList();
     });
-    downBtn.addEventListener("click", async () => {
+    downBtn.addEventListener("click", async (evt) => {
+      evt.stopPropagation();
       if (!ann.server_id) return;
       const result = await sendVote(ann.server_id, -1);
       if (!result) return;
@@ -522,8 +553,8 @@ function renderNotesList() {
     });
   };
 
-  renderSection("Your annotations", mine, mine.length > 0);
-  renderSection("Other annotations", others, mine.length > 0);
+  renderSection("Your annotations", mine, mine.length > 0, false);
+  renderSection("Other annotations", others, mine.length > 0, true);
 }
 
 async function sendVote(annotationId, value) {
@@ -2175,6 +2206,12 @@ discardAnnotationBtn.addEventListener("click", () => {
 if (annotationViewBack) {
   annotationViewBack.addEventListener("click", () => {
     clearActiveAnnotation();
+  });
+}
+
+if (annotationSortSelect) {
+  annotationSortSelect.addEventListener("change", () => {
+    renderNotesList();
   });
 }
 

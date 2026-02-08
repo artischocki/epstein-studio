@@ -145,6 +145,22 @@ body {
   padding-right: 4px;
 }
 
+.annotation-sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+#annotationSortSelect {
+  background: #0f1213;
+  border: 1px solid #2a3236;
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
 .annotation-note {
   background: #1a1f22;
   border: 1px solid #2a3236;
@@ -185,6 +201,12 @@ body {
   letter-spacing: 0.12em;
   color: var(--muted);
   margin: 6px 0 2px;
+}
+
+.annotation-section-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .vote-btn {
