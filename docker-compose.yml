@@ -18,8 +18,9 @@ services:
     depends_on:
       - db
     environment:
-      - /data/epstein:/data/epstein:ro
+      DATA_DIR: /app/data
     volumes:
+      - /data/epstein:/app/data:ro
       - ./backend/media:/app/backend/media
       - ./backend/static:/app/backend/static
     ports:
