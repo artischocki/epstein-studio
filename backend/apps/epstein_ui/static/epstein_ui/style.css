@@ -131,6 +131,13 @@ body {
   white-space: pre-wrap;
 }
 
+.annotation-view-note.empty {
+  color: var(--muted);
+  background: transparent;
+  border-color: transparent;
+  padding: 0;
+}
+
 .annotation-view-actions {
   margin-top: 10px;
   display: flex;
@@ -423,6 +430,16 @@ body {
   font-size: 13px;
   color: var(--text);
   white-space: pre-wrap;
+}
+
+.annotation-note-text.empty {
+  color: #c6cbd0;
+  background: #14181b;
+  border: 1px solid #2b3337;
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: inline-block;
+  width: fit-content;
 }
 
 .annotation-note-actions {

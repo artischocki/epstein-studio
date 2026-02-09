@@ -280,7 +280,14 @@ function updateAnnotationPanelMode() {
     }
     if (annotationViewNote) {
       const ann = annotations.get(activeAnnotationId);
-      annotationViewNote.textContent = ann?.note || "";
+      const note = (ann?.note || "").trim();
+      if (note) {
+        annotationViewNote.textContent = note;
+        annotationViewNote.classList.remove("empty");
+      } else {
+        annotationViewNote.textContent = "User left no Note.";
+        annotationViewNote.classList.add("empty");
+      }
     }
     tabsList.forEach((tab) => {
       tab.disabled = tab.dataset.tab !== "notes";
@@ -384,7 +391,9 @@ function activateAnnotation(id, { viewOnly = false } = {}) {
     notesInput.value = ann.note || "";
   }
   if (annotationViewNote && ann) {
-    annotationViewNote.textContent = ann.note || "";
+    const note = (ann.note || "").trim();
+    annotationViewNote.textContent = note || "User left no Note.";
+    annotationViewNote.classList.toggle("empty", !note);
   }
   if (annotationViewHash && ann) {
     annotationViewHash.textContent = ann.hash ? `${ann.hash}` : "";
@@ -700,7 +709,7 @@ function ensureLegacyAnnotation() {
 function renderNotesList() {
   if (!annotationNotes) return;
   annotationNotes.innerHTML = "";
-  const items = Array.from(annotations.values()).filter((ann) => (ann.note || "").trim().length > 0);
+  const items = Array.from(annotations.values());
   if (annotationStatus) {
     annotationStatus.textContent = items.length ? "" : "No Annotations yet";
     annotationStatus.classList.toggle("hidden", items.length > 0);
@@ -758,8 +767,9 @@ function renderNotesList() {
     }
 
     const text = document.createElement("div");
-    text.className = "annotation-note-text";
-    text.textContent = ann.note;
+    const noteText = (ann.note || "").trim();
+    text.className = noteText ? "annotation-note-text" : "annotation-note-text empty";
+    text.textContent = noteText || "No Note";
 
     const actions = document.createElement("div");
     actions.className = "annotation-note-actions";
