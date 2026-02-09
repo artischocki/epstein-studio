@@ -20,7 +20,7 @@ from django.db.models.functions import Coalesce
 
 from .models import Annotation, TextItem, ArrowItem, PdfDocument, AnnotationVote, AnnotationComment, CommentVote, PdfVote
 
-DATA_DIR = Path(__file__).resolve().parents[3] / "data"
+DATA_DIR = Path(os.environ.get("DATA_DIR", Path(__file__).resolve().parents[3] / "data"))
 
 
 def _list_pdfs_on_disk() -> list[Path]:
