@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y \
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml uv.lock* /app/
-RUN uv sync
 
 COPY . /app
+RUN uv sync
 
 WORKDIR /app/backend
 
