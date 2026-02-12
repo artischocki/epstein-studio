@@ -256,6 +256,8 @@ function updateAnnotationPanelMode() {
     activeAnnotationViewOnly = false;
     if (annotationTabs) annotationTabs.classList.add("hidden");
     if (annotationViewHeader) annotationViewHeader.classList.remove("hidden");
+    if (annotationNotesTitle) annotationNotesTitle.classList.add("hidden");
+    if (annotationSort) annotationSort.classList.add("hidden");
     if (annotationViewNote) annotationViewNote.classList.remove("hidden");
     if (annotationViewActions) {
       annotationViewActions.classList.remove("hidden");
@@ -279,6 +281,8 @@ function updateAnnotationPanelMode() {
     activeAnnotationViewOnly = false;
     if (annotationTabs) annotationTabs.classList.remove("hidden");
     if (annotationViewHeader) annotationViewHeader.classList.add("hidden");
+    if (annotationNotesTitle) annotationNotesTitle.classList.remove("hidden");
+    if (annotationSort) annotationSort.classList.remove("hidden");
     if (annotationViewNote) annotationViewNote.classList.add("hidden");
     if (annotationViewActions) {
       annotationViewActions.classList.add("hidden");
@@ -301,6 +305,8 @@ function updateAnnotationPanelMode() {
   if (activeAnnotationViewOnly) {
     if (annotationTabs) annotationTabs.classList.add("hidden");
     if (annotationViewHeader) annotationViewHeader.classList.remove("hidden");
+    if (annotationNotesTitle) annotationNotesTitle.classList.add("hidden");
+    if (annotationSort) annotationSort.classList.add("hidden");
     if (annotationViewNote) annotationViewNote.classList.remove("hidden");
     if (annotationViewActions) {
       annotationViewActions.classList.remove("hidden");
@@ -505,6 +511,9 @@ function updateAnnotationVisibility() {
     if (annotationNotes) {
       annotationNotes.classList.add("hidden");
     }
+    if (annotationNotesTitle) {
+      annotationNotesTitle.classList.add("hidden");
+    }
     if (pdfCommentForm) {
       pdfCommentForm.classList.add("hidden");
     }
@@ -544,6 +553,9 @@ function updateAnnotationVisibility() {
   }
   if (annotationNotes) {
     annotationNotes.classList.remove("hidden");
+  }
+  if (annotationNotesTitle) {
+    annotationNotesTitle.classList.toggle("hidden", !(annotations.size || pdfComments.length));
   }
   if (pdfCommentForm) {
     pdfCommentForm.classList.remove("hidden");
@@ -808,6 +820,11 @@ function ensureLegacyAnnotation() {
 function renderNotesList() {
   if (!annotationNotes) return;
   annotationNotes.innerHTML = "";
+  if (activeAnnotationId || activePdfDiscussion) {
+    if (annotationNotesTitle) annotationNotesTitle.classList.add("hidden");
+    if (annotationSort) annotationSort.classList.add("hidden");
+    return;
+  }
   const items = Array.from(annotations.values());
   const hasPdfComments = pdfComments.length > 0;
   if (annotationStatus) {
@@ -815,27 +832,28 @@ function renderNotesList() {
     annotationStatus.textContent = hasAnnotations || hasPdfComments ? "" : "No Annotations yet";
     annotationStatus.classList.toggle("hidden", hasAnnotations || hasPdfComments);
   }
+  if (initialTargetHash) {
+    const hashToOpen = initialTargetHash;
+    const targetComment = pdfComments.find((c) => c.hash === hashToOpen);
+    if (targetComment) {
+      initialTargetHash = "";
+      openPdfCommentDiscussion(targetComment);
+      return;
+    }
+    const targetAnnotation = Array.from(annotations.values()).find((ann) => ann.hash === hashToOpen);
+    if (targetAnnotation) {
+      initialTargetHash = "";
+      activateAnnotation(targetAnnotation.id, { viewOnly: true });
+      return;
+    }
+  }
+
   if (annotationNotesTitle) {
     annotationNotesTitle.classList.toggle("hidden", !(items.length || hasPdfComments));
   }
   if (!items.length && !hasPdfComments) return;
   if (annotationSort) {
     annotationSort.classList.remove("hidden");
-  }
-
-  if (initialTargetHash) {
-    const hashToOpen = initialTargetHash;
-    initialTargetHash = "";
-    const targetComment = pdfComments.find((c) => c.hash === hashToOpen);
-    if (targetComment) {
-      openPdfCommentDiscussion(targetComment);
-      return;
-    }
-    const targetAnnotation = Array.from(annotations.values()).find((ann) => ann.hash === hashToOpen);
-    if (targetAnnotation) {
-      activateAnnotation(targetAnnotation.id, { viewOnly: true });
-      return;
-    }
   }
 
   const currentUserName = document.body.dataset.user || "";
