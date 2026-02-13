@@ -65,6 +65,8 @@ const annotationViewBack = document.getElementById("annotationViewBack");
 const confirmOverlay = document.getElementById("confirmOverlay");
 const confirmCancel = document.getElementById("confirmCancel");
 const confirmOk = document.getElementById("confirmOk");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmText = document.getElementById("confirmText");
 const discussionPanel = document.getElementById("discussionPanel");
 const discussionList = document.getElementById("discussionList");
 const discussionForm = document.getElementById("discussionForm");
@@ -1359,7 +1361,10 @@ function renderDiscussion(annotationId, comments) {
     deleteBtn.disabled = !canDelete;
     deleteBtn.addEventListener("click", async () => {
       if (!canDelete) return;
-      showConfirm(async () => {
+      showConfirm({
+        title: "Delete comment?",
+        text: "This will delete the comment and all replies.",
+        onOk: async () => {
         const result = await deleteComment(comment.id);
         if (!result || !result.ok) return;
         const removeIds = new Set([comment.id]);
@@ -1377,6 +1382,7 @@ function renderDiscussion(annotationId, comments) {
         comments.length = 0;
         next.forEach((c) => comments.push(c));
         renderDiscussion(annotationId, comments);
+        },
       });
     });
 
@@ -1536,7 +1542,10 @@ function renderPdfCommentDiscussion(commentId, replies) {
     deleteBtn.disabled = !canDelete;
     deleteBtn.addEventListener("click", async () => {
       if (!canDelete) return;
-      showConfirm(async () => {
+      showConfirm({
+        title: "Delete comment?",
+        text: "This will delete the comment and all replies.",
+        onOk: async () => {
         const result = await deletePdfReply(comment.id);
         if (!result || !result.ok) return;
         const removeIds = new Set([comment.id]);
@@ -1554,6 +1563,7 @@ function renderPdfCommentDiscussion(commentId, replies) {
         replies.length = 0;
         next.forEach((c) => replies.push(c));
         renderPdfCommentDiscussion(commentId, replies);
+        },
       });
     });
 
@@ -2192,9 +2202,15 @@ function closeContextMenu() {
   contextTarget = null;
 }
 
-function showConfirm(onOk) {
+function showConfirm({ title, text, onOk }) {
   if (!confirmOverlay || !confirmOk) return;
   pendingConfirm = onOk;
+  if (confirmTitle && typeof title === "string") {
+    confirmTitle.textContent = title;
+  }
+  if (confirmText && typeof text === "string") {
+    confirmText.textContent = text;
+  }
   confirmOverlay.classList.remove("hidden");
 }
 
@@ -3615,7 +3631,13 @@ contextMenu.addEventListener("click", (evt) => {
       if (activeHint === group) activeHint = null;
       group.remove();
     } else if (type === "annotation") {
-      removeAnnotationById(id);
+      showConfirm({
+        title: "Delete annotation?",
+        text: "This will permanently delete the annotation.",
+        onOk: () => {
+          removeAnnotationById(id);
+        },
+      });
     }
   }
   if (action === "edit") {
@@ -3919,7 +3941,13 @@ if (discussionDeleteBtn) {
   discussionDeleteBtn.addEventListener("click", () => {
     const ann = annotations.get(activeAnnotationId);
     if (!ann || !ann.isOwner || !isAuthenticated) return;
-    removeAnnotationById(activeAnnotationId);
+    showConfirm({
+      title: "Delete annotation?",
+      text: "This will permanently delete the annotation.",
+      onOk: () => {
+        removeAnnotationById(activeAnnotationId);
+      },
+    });
   });
 }
 
