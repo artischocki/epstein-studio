@@ -85,7 +85,7 @@ let view = { x: 0, y: 0, scale: 1 };
 let isResizing = false;
 let canvasSize = { width: 900, height: 520 };
 let firstPageWidth = 900;
-const DEFAULT_TEXT_SIZE = 24;
+const DEFAULT_TEXT_SIZE = 14.7;
 const VIEW_W = 900;
 const VIEW_H = 520;
 const PAGE_GAP = 24;
@@ -2371,7 +2371,7 @@ function onResizeMove(evt) {
   const now = svgPointInViewport(evt);
   const targetDx = now.x - resizeState.start.x;
   const scaleFactor = Math.max(0.2, (resizeState.startWidth + targetDx) / resizeState.startWidth);
-  const nextSize = Math.max(12, Math.min(72, resizeState.startSize * scaleFactor));
+  const nextSize = Math.max(10, Math.min(40, resizeState.startSize * scaleFactor));
   sizeRange.value = nextSize;
   applyStylesToGroup(resizeState.group);
 }
