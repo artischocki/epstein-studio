@@ -15,9 +15,7 @@
           <div class="brand">Epstein Studio</div>
           <div class="topbar-actions">
             <a class="btn btn-secondary" href="/browse/">Browse</a>
-            {% if request.user.is_authenticated %}
-              <a class="btn" href="/">Open Viewer</a>
-            {% else %}
+            {% if not request.user.is_authenticated %}
               <a class="btn" href="/login/">Participate</a>
             {% endif %}
           </div>
@@ -83,8 +81,8 @@
                 <span class="about-status-value">Public Beta</span>
               </div>
               <div class="about-status-card">
-                <span class="about-status-label">Dataset</span>
-                <span class="about-status-value">Dataset 12</span>
+                <span class="about-status-label">Datasets</span>
+                <span class="about-status-value">Datasets 1-12</span>
               </div>
               <div class="about-status-card">
                 <span class="about-status-label">Source</span>
@@ -98,8 +96,8 @@
             <div class="about-contrib-grid">
               <div class="about-contrib-card">
                 <h3 class="about-contrib-title">As a researcher</h3>
-                <p class="about-body">Create an account, pick a document, and start annotating. Every contribution is visible to the community.</p>
-                <a class="btn" href="/register/">Create Account</a>
+                <p class="about-body">Create an anonymous ID, pick a document, and start annotating. Every contribution is visible to the community.</p>
+                <a class="btn" href="/register/">Participate</a>
               </div>
               <div class="about-contrib-card">
                 <h3 class="about-contrib-title">As a developer</h3>
