@@ -3,6 +3,8 @@ import json
 import os
 import random
 import subprocess
+import urllib.request
+import urllib.error
 from pathlib import Path
 
 from PIL import Image
@@ -181,6 +183,66 @@ def browse(request):
 def about(request):
     """Render the about page."""
     return render(request, "epstein_ui/about.html")
+
+
+GITHUB_REPO = "artischocki/epstein-studio"
+
+
+@csrf_exempt
+def feature_request(request):
+    """Create a GitHub issue from a feature request submission."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    title = (payload.get("title") or "").strip()
+    description = (payload.get("description") or "").strip()
+
+    if not title:
+        return JsonResponse({"error": "Title is required"}, status=400)
+
+    github_token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if not github_token:
+        return JsonResponse({"error": "Feature requests are not configured"}, status=503)
+
+    username = ""
+    if request.user.is_authenticated:
+        username = request.user.username
+
+    body = description
+    if username:
+        body = f"{description}\n\n---\nSubmitted by **{username}** via Epstein Studio".strip()
+
+    issue_data = json.dumps({
+        "title": f"[Feature Request] {title}",
+        "body": body,
+        "labels": ["feature-request"],
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{GITHUB_REPO}/issues",
+        data=issue_data,
+        headers={
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            return JsonResponse({
+                "ok": True,
+                "issue_url": result.get("html_url", ""),
+            })
+    except urllib.error.HTTPError as exc:
+        return JsonResponse({"error": "Failed to create issue"}, status=502)
 
 
 def random_pdf(request):

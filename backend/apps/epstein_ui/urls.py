@@ -10,6 +10,7 @@ urlpatterns = [
     path("browse/", views.browse, name="browse"),
     path("browse-list/", views.browse_list, name="browse_list"),
     path("about/", views.about, name="about"),
+    path("feature-request/", views.feature_request, name="feature_request"),
     path("register/", views.register, name="register"),
     path("logout/", views.logout_view, name="logout"),
     path("username-check/", views.username_check, name="username_check"),

@@ -4,31 +4,191 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>About • Epstein Studio</title>
+    <title>About &bull; Epstein Studio</title>
     <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
     <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
   </head>
   <body>
     <div class="page">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div class="brand">Epstein Studio</div>
+          <div class="topbar-actions">
+            <a class="btn btn-secondary" href="/browse/">Browse</a>
+            {% if request.user.is_authenticated %}
+              <a class="btn" href="/">Open Viewer</a>
+            {% else %}
+              <a class="btn" href="/login/">Participate</a>
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
       <main class="about-page">
         <div class="about-content">
-          <div class="file-title">About</div>
-          <div class="about-text">
-            Epstein Studio is a collaborative workspace for annotating redacted PDF files.
-          </div>
-          <div class="about-text">
-            You can place annotations, add text overlays, draw hints, and discuss findings with other users.
-            Comments and annotations are visible to everyone.
-          </div>
-          <div class="about-text">
-            Below are placeholder areas for screenshots:
-          </div>
-          <div class="about-screens">
-            <div class="about-shot">Screenshot placeholder</div>
-            <div class="about-shot">Screenshot placeholder</div>
-          </div>
+
+          <section class="about-hero">
+            <h1 class="about-title">Collaborative investigation<br/>of the Epstein files.</h1>
+            <p class="about-subtitle">
+              Thousands of pages of court documents are public record.
+              Epstein Studio gives the crowd the tools to go through them together.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">How it works</h2>
+            <div class="about-steps">
+              <div class="about-step">
+                <div class="about-step-number">1</div>
+                <div class="about-step-label">Browse</div>
+                <p class="about-step-desc">Search, sort, or pick a random PDF from the indexed collection.</p>
+              </div>
+              <div class="about-step">
+                <div class="about-step-number">2</div>
+                <div class="about-step-label">Annotate</div>
+                <p class="about-step-desc">Pin annotations on any page. Add notes, text overlays, and directional arrows.</p>
+              </div>
+              <div class="about-step">
+                <div class="about-step-number">3</div>
+                <div class="about-step-label">Discuss</div>
+                <p class="about-step-desc">Every annotation has its own thread. Comment, reply, and share findings.</p>
+              </div>
+              <div class="about-step">
+                <div class="about-step-number">4</div>
+                <div class="about-step-label">Surface</div>
+                <p class="about-step-desc">Vote on annotations and documents. The most promising leads rise to the top.</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Why this exists</h2>
+            <p class="about-body">
+              Redacted court filings, flight logs, and deposition transcripts related to
+              Jeffrey Epstein have been released to the public across multiple document dumps.
+              The volume is massive and the documents are difficult to parse alone.
+            </p>
+            <p class="about-body">
+              This tool exists so people can work through them together &mdash; marking up pages,
+              flagging names and connections, and building a shared understanding of what the
+              documents contain. No speculation, just the documents.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Current status</h2>
+            <div class="about-status-grid">
+              <div class="about-status-card">
+                <span class="about-status-label">Stage</span>
+                <span class="about-status-value">Public Beta</span>
+              </div>
+              <div class="about-status-card">
+                <span class="about-status-label">Dataset</span>
+                <span class="about-status-value">Dataset 12</span>
+              </div>
+              <div class="about-status-card">
+                <span class="about-status-label">Source</span>
+                <span class="about-status-value">Open Source</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Request a feature</h2>
+            <p class="about-body">
+              Got an idea for how to make this tool better? Submit it below and it will be
+              tracked as a GitHub issue.
+            </p>
+            <form id="featureForm" class="feature-form">
+              <input
+                id="featureTitle"
+                type="text"
+                class="feature-input"
+                placeholder="Short title for your request"
+                maxlength="120"
+                required
+              />
+              <textarea
+                id="featureDesc"
+                class="feature-textarea"
+                placeholder="Describe the feature or improvement (optional)"
+                rows="4"
+                maxlength="2000"
+              ></textarea>
+              <div class="feature-form-footer">
+                <button id="featureSubmit" class="btn" type="submit">Submit Feature Request</button>
+                <span id="featureStatus" class="feature-status"></span>
+              </div>
+            </form>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Contribute</h2>
+            <div class="about-contrib-grid">
+              <div class="about-contrib-card">
+                <h3 class="about-contrib-title">As a researcher</h3>
+                <p class="about-body">Create an account, pick a document, and start annotating. Every contribution is visible to the community.</p>
+                <a class="btn" href="/register/">Create Account</a>
+              </div>
+              <div class="about-contrib-card">
+                <h3 class="about-contrib-title">As a developer</h3>
+                <p class="about-body">The codebase is open source. Fork it, improve it, or host your own instance with a different dataset.</p>
+                <a class="btn btn-outline" href="https://github.com/artischocki/epstein-studio" target="_blank" rel="noopener">View on GitHub</a>
+              </div>
+            </div>
+          </section>
+
         </div>
       </main>
     </div>
+
+    <script>
+      const form = document.getElementById("featureForm");
+      const titleInput = document.getElementById("featureTitle");
+      const descInput = document.getElementById("featureDesc");
+      const submitBtn = document.getElementById("featureSubmit");
+      const status = document.getElementById("featureStatus");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const title = titleInput.value.trim();
+        if (!title) return;
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+        status.textContent = "";
+        status.className = "feature-status";
+
+        try {
+          const resp = await fetch("/feature-request/", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+              title: title,
+              description: descInput.value.trim(),
+            }),
+          });
+          const data = await resp.json();
+          if (resp.ok && data.ok) {
+            status.textContent = "Submitted!";
+            status.classList.add("feature-status-ok");
+            if (data.issue_url) {
+              status.innerHTML = 'Submitted! <a href="' + data.issue_url + '" target="_blank" rel="noopener">View on GitHub</a>';
+            }
+            titleInput.value = "";
+            descInput.value = "";
+          } else {
+            status.textContent = data.error || "Something went wrong";
+            status.classList.add("feature-status-err");
+          }
+        } catch (err) {
+          status.textContent = "Network error, try again";
+          status.classList.add("feature-status-err");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Feature Request";
+        }
+      });
+    </script>
   </body>
 </html>
