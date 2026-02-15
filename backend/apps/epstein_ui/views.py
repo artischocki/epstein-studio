@@ -16,6 +16,7 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Count, Q
 from django.db.utils import OperationalError, ProgrammingError
 
 from .models import (
@@ -168,6 +169,53 @@ def _render_pdf_pages(pdf_path: Path) -> list[Path]:
     if not rendered:
         raise RuntimeError("pdftoppm produced no pages")
     return rendered
+
+
+def start_page(request):
+    """Render the landing page with project stats."""
+    try:
+        total_pdfs = PdfDocument.objects.count()
+        annotated_pdfs = PdfDocument.objects.filter(annotation_count__gt=0).count()
+        total_annotations = Annotation.objects.count()
+        total_users = User.objects.count()
+        total_comments = PdfComment.objects.count() + AnnotationComment.objects.count()
+
+        coverage_pct = round((annotated_pdfs / total_pdfs * 100) if total_pdfs > 0 else 0)
+
+        most_discussed = list(
+            PdfDocument.objects.annotate(
+                discussion_count=Count("comments")
+            )
+            .filter(discussion_count__gt=0)
+            .order_by("-discussion_count")[:5]
+            .values("filename", "discussion_count")
+        )
+
+        most_promising = list(
+            PdfDocument.objects.filter(vote_score__gt=0)
+            .order_by("-vote_score")[:5]
+            .values("filename", "vote_score")
+        )
+    except (OperationalError, ProgrammingError):
+        total_pdfs = 0
+        annotated_pdfs = 0
+        total_annotations = 0
+        total_users = 0
+        total_comments = 0
+        coverage_pct = 0
+        most_discussed = []
+        most_promising = []
+
+    return render(request, "epstein_ui/start.html", {
+        "total_pdfs": total_pdfs,
+        "annotated_pdfs": annotated_pdfs,
+        "total_annotations": total_annotations,
+        "total_users": total_users,
+        "total_comments": total_comments,
+        "coverage_pct": coverage_pct,
+        "most_discussed": most_discussed,
+        "most_promising": most_promising,
+    })
 
 
 def index(request, pdf_slug=None, target_hash=None):
@@ -465,7 +513,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("index")
+            return redirect("start")
     else:
         form = UserCreationForm()
     suggested_id = None
@@ -491,7 +539,7 @@ def register(request):
 def logout_view(request):
     """Logout helper that redirects back to the index."""
     logout(request)
-    return redirect("index")
+    return redirect("start")
 
 
 def username_check(request):
