@@ -1216,6 +1216,8 @@ body {
   font-size: clamp(24px, 4vw, 40px);
   font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .meta {
