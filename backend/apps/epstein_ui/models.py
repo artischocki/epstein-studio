@@ -50,6 +50,7 @@ class PdfDocument(models.Model):
     filename = models.CharField(max_length=255, db_index=True)
     path = models.TextField(unique=True)
     annotation_count = models.IntegerField(default=0)
+    comment_count = models.IntegerField(default=0)
     vote_score = models.IntegerField(default=0)
 
     def __str__(self) -> str:

@@ -1,0 +1,123 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Epstein Studio</title>
+    <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
+    <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div class="brand">Epstein Studio</div>
+          <div class="topbar-actions">
+            <a class="btn btn-secondary" href="/about/">About</a>
+            <a class="btn btn-secondary" href="/browse/">Browse</a>
+            {% if request.user.is_authenticated %}
+              <a class="btn" href="/browse/">Open Viewer</a>
+            {% else %}
+              <a class="btn" href="/login/">Participate</a>
+            {% endif %}
+          </div>
+        </div>
+      </header>
+
+      <main class="start-page">
+        <div class="start-content">
+
+          <section class="start-hero">
+            <h1 class="start-title">The Epstein files,<br/>annotated by the crowd.</h1>
+            <p class="start-subtitle">
+              Browse, annotate, and discuss thousands of redacted court documents.
+              Together.
+            </p>
+            <div class="start-hero-actions">
+              <a class="btn" href="/browse/">Start Browsing</a>
+              <a class="btn btn-outline" href="/about/">Learn More</a>
+            </div>
+          </section>
+
+          <section class="start-section">
+            <h2 class="start-heading">Progress</h2>
+            <div class="start-progress-wrap">
+              <div class="start-progress-bar">
+                <div class="start-progress-fill" style="width: {{ coverage_pct }}%"></div>
+              </div>
+              <div class="start-progress-label">
+                <span>{{ annotated_pdfs }} of {{ total_pdfs }} documents reviewed</span>
+                <span class="start-progress-pct">{{ coverage_pct }}%</span>
+              </div>
+            </div>
+            <div class="start-stats">
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_pdfs }}</span>
+                <span class="start-stat-label">Documents</span>
+              </div>
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_annotations }}</span>
+                <span class="start-stat-label">Annotations</span>
+              </div>
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_comments }}</span>
+                <span class="start-stat-label">Comments</span>
+              </div>
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_users }}</span>
+                <span class="start-stat-label">Contributors</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="start-section">
+            <div class="start-lists">
+              <div class="start-list-col">
+                <h2 class="start-heading">Most Discussed</h2>
+                {% if most_discussed %}
+                  <ol class="start-ranked-list">
+                    {% for item in most_discussed %}
+                      <li>
+                        <a href="/{{ item.filename|cut:'.pdf' }}">
+                          <span class="start-ranked-name">{{ item.filename }}</span>
+                          <span class="start-ranked-stat">{{ item.discussion_count }} comment{{ item.discussion_count|pluralize }}</span>
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ol>
+                {% else %}
+                  <p class="start-empty">No discussions yet. Be the first.</p>
+                {% endif %}
+              </div>
+
+              <div class="start-list-col">
+                <h2 class="start-heading">Most Promising</h2>
+                {% if most_promising %}
+                  <ol class="start-ranked-list">
+                    {% for item in most_promising %}
+                      <li>
+                        <a href="/{{ item.filename|cut:'.pdf' }}">
+                          <span class="start-ranked-name">{{ item.filename }}</span>
+                          <span class="start-ranked-stat">+{{ item.vote_score }} vote{{ item.vote_score|pluralize }}</span>
+                        </a>
+                      </li>
+                    {% endfor %}
+                  </ol>
+                {% else %}
+                  <p class="start-empty">No votes yet. Start rating documents.</p>
+                {% endif %}
+              </div>
+
+              <div class="start-list-col">
+                <h2 class="start-heading">Most Redacted</h2>
+                <p class="start-empty">Coming soon — automated redaction scoring is in development.</p>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
