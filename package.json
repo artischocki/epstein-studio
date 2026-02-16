@@ -1,0 +1,13 @@
+{
+  "name": "epstein-studio-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Electron shell for running Epstein Studio as a desktop app.",
+  "main": "electron/main.js",
+  "scripts": {
+    "electron:dev": "electron electron/main.js"
+  },
+  "devDependencies": {
+    "electron": "^40.4.1"
+  }
+}

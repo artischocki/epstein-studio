@@ -9,6 +9,9 @@
 ## Main Components
 - Web app:
   - Templates and static assets under `backend/apps/epstein_ui/`.
+- Desktop shell:
+  - Electron main process in `electron/main.js`.
+  - Starts Django locally, then loads the app URL in a desktop window.
 - API-like endpoints:
   - Implemented in `backend/apps/epstein_ui/views.py`.
 - Routing:
