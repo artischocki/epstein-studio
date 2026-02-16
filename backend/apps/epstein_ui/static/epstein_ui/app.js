@@ -154,6 +154,7 @@ let pdfComments = [];
 let activePdfDiscussion = false;
 let activePdfCommentId = null;
 let pdfCommentReplyCache = new Map();
+const LOCAL_ANNOTATION_STATE_VERSION = 1;
 
 function formatTimestamp(value, { dateOnly = false } = {}) {
   if (!value) return "";
@@ -182,6 +183,48 @@ function generateHash() {
     return crypto.randomUUID();
   }
   return `h_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function annotationStorageKey(pdfName) {
+  const key = String(pdfName || "").toLowerCase();
+  const user = String(document.body.dataset.user || "anon");
+  return `epstein:annotations:v${LOCAL_ANNOTATION_STATE_VERSION}:${user}:${key}`;
+}
+
+function loadLocalAnnotationState(pdfName) {
+  if (!pdfName) return null;
+  const key = annotationStorageKey(pdfName);
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return null;
+    return {
+      annotations: Array.isArray(data.annotations) ? data.annotations : [],
+      textItems: Array.isArray(data.textItems) ? data.textItems : [],
+      arrows: Array.isArray(data.arrows) ? data.arrows : [],
+    };
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+function saveLocalAnnotationState(pdfName, state) {
+  if (!pdfName || !state) return;
+  const key = annotationStorageKey(pdfName);
+  const payload = {
+    version: LOCAL_ANNOTATION_STATE_VERSION,
+    savedAt: Date.now(),
+    annotations: Array.isArray(state.annotations) ? state.annotations : [],
+    textItems: Array.isArray(state.textItems) ? state.textItems : [],
+    arrows: Array.isArray(state.arrows) ? state.arrows : [],
+  };
+  try {
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 sizeRange.value = DEFAULT_TEXT_SIZE;
@@ -2909,161 +2952,50 @@ async function loadAnnotationsForPdf(pdfName) {
     annotationStatus.textContent = "Annotations Loading...";
     annotationStatus.classList.remove("hidden");
   }
+  const localState = loadLocalAnnotationState(pdfName);
+  let annotationsPayload = [];
+  let textItems = [];
+  let arrows = [];
+  if (localState) {
+    annotationsPayload = localState.annotations;
+    textItems = localState.textItems;
+    arrows = localState.arrows;
+  }
+  let fetchedPdfComments = [];
   try {
     const response = await fetch(`/annotations/?pdf=${encodeURIComponent(pdfName)}`);
-    if (!response.ok) return;
-    const data = await response.json();
-    if (!data.annotations) return;
-    const annotationsPayload = [];
-    const textItems = [];
-    const arrows = [];
-    data.annotations.forEach((ann) => {
-      const key = ann.hash || ann.id;
-      annotationsPayload.push({
-        id: key,
-        clientId: ann.id,
-        server_id: ann.server_id,
-        x: ann.x,
-        y: ann.y,
-        note: ann.note || "",
-        user: ann.user || "",
-        isOwner: ann.is_owner ?? false,
-        isNew: false,
-        upvotes: ann.upvotes || 0,
-        downvotes: ann.downvotes || 0,
-        userVote: ann.user_vote || 0,
-        hash: ann.hash || "",
-        createdAt: ann.created_at || "",
-      });
-      (ann.textItems || []).forEach((item) => {
-        textItems.push({
-          annotationId: key,
-          x: item.x,
-          y: item.y,
-          text: item.text || "",
-          fontFamily: item.fontFamily,
-          fontSize: item.fontSize,
-          fontWeight: item.fontWeight,
-          fontStyle: item.fontStyle,
-          fontKerning: item.fontKerning,
-          fontFeatureSettings: item.fontFeatureSettings,
-          fontVariantLigatures: item.fontVariantLigatures,
-          color: item.color,
-          opacity: item.opacity,
-        });
-      });
-      (ann.arrows || []).forEach((arrow) => {
-        arrows.push({
-          annotationId: key,
-          x1: arrow.x1,
-          y1: arrow.y1,
-          x2: arrow.x2,
-          y2: arrow.y2,
-        });
-      });
-    });
-    pdfComments = Array.isArray(data.pdf_comments) ? data.pdf_comments : [];
-    pdfState.set(pdfName, { annotations: annotationsPayload, textItems, arrows, pdfComments });
-    loadStateForPdf(pdfName);
-    rebuildHeatmapBase();
-    renderHeatmap();
+    if (response.ok) {
+      const data = await response.json();
+      fetchedPdfComments = Array.isArray(data.pdf_comments) ? data.pdf_comments : [];
+    }
   } catch (err) {
     console.error(err);
-    if (annotationStatus) {
-      annotationStatus.textContent = "No Annotations yet";
-      annotationStatus.classList.remove("hidden");
-    }
   }
+  pdfComments = fetchedPdfComments;
+  pdfState.set(pdfName, { annotations: annotationsPayload, textItems, arrows, pdfComments });
+  loadStateForPdf(pdfName);
+  rebuildHeatmapBase();
+  renderHeatmap();
 }
 
 async function saveAnnotationsForPdf() {
   if (!currentPdfKey) return;
   if (!isAuthenticated) return;
-  const payload = {
-    pdf: currentPdfKey,
-    annotations: Array.from(annotations.values()).map((ann) => {
-      const textItems = Array.from(textLayer.querySelectorAll(".text-group"))
-        .filter((group) => group.dataset.annotation === ann.id)
-        .map((group) => {
-          const { editor } = getGroupElements(group);
-          const pos = parseTranslate(group.getAttribute("transform") || "translate(0 0)");
-          const computed = window.getComputedStyle(editor);
-          return {
-            x: pos.x,
-            y: pos.y,
-            text: editor.textContent || "",
-            fontFamily: group.dataset.font || computed.fontFamily,
-            fontSize: computed.fontSize,
-            fontWeight: computed.fontWeight,
-            fontStyle: computed.fontStyle,
-            fontKerning: computed.fontKerning,
-            fontFeatureSettings: computed.fontFeatureSettings,
-            fontVariantLigatures: computed.fontVariantLigatures,
-            color: computed.color,
-            opacity: parseFloat(computed.opacity) || 1,
-          };
-        });
-      const arrows = Array.from(hintLayer.querySelectorAll('g[data-type="arrow"]'))
-        .filter((group) => group.dataset.annotation === ann.id)
-        .map((group) => {
-          const line = group.querySelector(".hint-arrow-line");
-          const handles = group.querySelectorAll(".hint-handle");
-          if (handles.length === 2) {
-            return {
-              x1: parseFloat(handles[0].getAttribute("cx")),
-              y1: parseFloat(handles[0].getAttribute("cy")),
-              x2: parseFloat(handles[1].getAttribute("cx")),
-              y2: parseFloat(handles[1].getAttribute("cy")),
-            };
-          }
-          return {
-            x1: parseFloat(line.getAttribute("x1")),
-            y1: parseFloat(line.getAttribute("y1")),
-            x2: parseFloat(line.dataset.rawX2 || line.getAttribute("x2")),
-            y2: parseFloat(line.dataset.rawY2 || line.getAttribute("y2")),
-          };
-        });
-      return {
-        id: ann.clientId || ann.id,
-        x: ann.x,
-        y: ann.y,
-        note: ann.note || "",
-        hash: ann.hash || "",
-        textItems,
-        arrows,
-      };
-    }),
+  serializeCurrentState();
+  const state = pdfState.get(currentPdfKey);
+  if (!state) return;
+  saveLocalAnnotationState(currentPdfKey, {
+    annotations: state.annotations || [],
+    textItems: state.textItems || [],
+    arrows: state.arrows || [],
+  });
+  const cleanState = {
+    ...state,
+    annotations: (state.annotations || []).map((ann) => ({ ...ann, isNew: false })),
   };
-  try {
-    const response = await fetch("/annotations/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    if (data && Array.isArray(data.mappings)) {
-      data.mappings.forEach((mapping) => {
-        const hash = mapping.hash || "";
-        let target = null;
-        if (hash && annotations.has(hash)) {
-          target = annotations.get(hash);
-        } else {
-          const found = Array.from(annotations.values()).find((ann) => ann.clientId === mapping.client_id);
-          if (found) target = found;
-        }
-        if (target) {
-          target.server_id = mapping.server_id;
-          if (hash && target.id !== hash) {
-            annotations.delete(target.id);
-            target.id = hash;
-            annotations.set(hash, target);
-          }
-        }
-      });
-    }
-  } catch (err) {
-    console.error(err);
+  pdfState.set(currentPdfKey, cleanState);
+  for (const ann of annotations.values()) {
+    ann.isNew = false;
   }
 }
 

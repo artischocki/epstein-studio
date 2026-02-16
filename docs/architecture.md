@@ -47,6 +47,9 @@
   - `annotations: []`
   - `pdf_comments: [...]` (still server-backed)
 - Annotation mutation/comment/vote endpoints in Django return `410 Gone` and are deprecated in favor of decentralized sync.
+- Frontend annotation persistence is currently local-first:
+  - `app.js` saves annotation state in browser `localStorage` per `(user_hash, pdf_key)`.
+  - Reloading the same browser/device restores annotations without Django DB storage.
 
 ## PDF Indexing and Counters
 - Index refresh command:

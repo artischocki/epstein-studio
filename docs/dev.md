@@ -32,6 +32,9 @@
   - `GET /annotations/?pdf=<filename.pdf>` returns an empty `annotations` list by design while decentralization work is in progress.
 - Annotation write/comment/vote endpoint behavior:
   - `POST /annotations/`, `POST /annotation-votes/`, `GET|POST /annotation-comments/`, `POST /comment-votes/`, and `POST /comment-delete/` return `410`.
+- Local annotation persistence behavior:
+  - Frontend stores annotations in `localStorage` (scoped by persistent `data-user` hash + PDF filename).
+  - Annotation edits persist across reloads on the same browser/device profile.
 - Auth route behavior:
   - `/login/`, `/register/`, `/logout/`, and `/username-check/` are removed.
 - Run desktop app:
