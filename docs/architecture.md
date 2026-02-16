@@ -4,10 +4,15 @@
 - Django monolith with server-rendered templates.
 - Interactive behavior implemented with static JS files.
 - PDF metadata and collaboration data in SQL database.
+- Repository/package metadata is centered on `epstein-studio`; no separate OCR/extractor subsystem is part of the app runtime.
 
 ## Main Components
 - Web app:
   - Templates and static assets under `backend/apps/epstein_ui/`.
+- Desktop shell:
+  - Electron main process in `electron/main.js`.
+  - Starts Django locally, then loads the app URL in a desktop window.
+  - Uses the default native OS title bar with standard window controls.
 - API-like endpoints:
   - Implemented in `backend/apps/epstein_ui/views.py`.
 - Routing:

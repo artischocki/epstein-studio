@@ -81,12 +81,6 @@ def _sync_pdf_index_on_request() -> None:
     if os.environ.get("PDF_INDEX_SYNC_ON_REQUEST", "").strip().lower() in {"1", "true", "yes"}:
         _sync_pdf_index()
 
-
-def _sync_pdf_index_on_request() -> None:
-    """Optional indexing on request; disabled by default for performance."""
-    if os.environ.get("PDF_INDEX_SYNC_ON_REQUEST", "").strip().lower() in {"1", "true", "yes"}:
-        _sync_pdf_index()
-
 def _get_pdf_pages(pdf_path: Path) -> int:
     """Best-effort page count using pdfinfo (falls back to 1)."""
     pdfinfo = shutil.which("pdfinfo")

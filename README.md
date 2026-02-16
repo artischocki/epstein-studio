@@ -31,9 +31,9 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 | Backend | Django 5.2 |
 | Database | PostgreSQL 16 |
 | PDF Rendering | poppler-utils (pdftoppm) |
-| OCR | Tesseract |
 | Server | Gunicorn |
 | Frontend | Vanilla JS, SVG canvas |
+| Desktop Shell | Electron |
 | Package Manager | uv |
 | Deployment | Docker Compose |
 
@@ -46,7 +46,8 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 - Python 3.9+
 - PostgreSQL
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- System packages: `poppler-utils`, `tesseract-ocr`
+- Node.js 16+ (for Electron desktop app)
+- System package: `poppler-utils`
 
 ### Local Development
 
@@ -83,6 +84,57 @@ docker compose exec web uv run python manage.py migrate
 docker compose exec web uv run python manage.py index_pdfs
 ```
 
+### Desktop App (Electron)
+
+Use this when you want to run Epstein Studio as a desktop app on your local machine.
+
+#### 1) One-time setup
+
+```bash
+# install backend deps
+uv sync
+
+# install electron dependencies
+npm install
+```
+
+#### 2) Prepare local data and DB
+
+```bash
+# create/edit environment file
+cp .env.example .env
+
+# apply migrations
+uv run python backend/manage.py migrate
+
+# index PDFs (set DATA_DIR in .env first)
+uv run python backend/manage.py index_pdfs
+```
+
+#### 3) Run the desktop app
+
+```bash
+# starts Django automatically, then opens Electron
+npm run electron:dev
+```
+
+#### 4) Stop the app
+
+Close the Electron window. The spawned Django server is stopped on app exit.
+
+#### Behavior and local overrides
+
+- Default URL target is `127.0.0.1:8000`.
+- If port `8000` is already used by another service, the Electron launcher auto-selects the next free port.
+- You can override host/port with `ELECTRON_DJANGO_HOST` and `ELECTRON_DJANGO_PORT`.
+- Linux/Ubuntu: the launcher defaults to `ozone-platform-hint=x11` so native title bar buttons and window drag work reliably.
+
+Example overrides:
+
+```bash
+ELECTRON_DJANGO_HOST=127.0.0.1 ELECTRON_DJANGO_PORT=8010 npm run electron:dev
+```
+
 ### Environment Variables
 
 | Variable | Description |
@@ -115,8 +167,9 @@ epstein/
 │   │       ├── views.py      # API endpoints and page views
 │   │       ├── templates/    # HTML templates
 │   │       └── static/       # JS, CSS, fonts, icons
-│   └── email_header_extractor/
-│       └── extract_headers.py  # OCR-based email header extraction utility
+├── electron/
+│   └── main.js               # Electron main process (starts Django + opens desktop window)
+├── package.json              # Electron scripts/dependencies
 ├── pyproject.toml
 ├── uv.lock
 ├── Dockerfile
