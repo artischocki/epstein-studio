@@ -20,13 +20,7 @@ from django.db.models import Count, Q
 from django.db.utils import OperationalError, ProgrammingError
 
 from .models import (
-    Annotation,
-    TextItem,
-    ArrowItem,
     PdfDocument,
-    AnnotationVote,
-    AnnotationComment,
-    CommentVote,
     PdfVote,
     PdfComment,
     PdfCommentReply,
@@ -170,9 +164,9 @@ def start_page(request):
     try:
         total_pdfs = PdfDocument.objects.count()
         annotated_pdfs = PdfDocument.objects.filter(annotation_count__gt=0).count()
-        total_annotations = Annotation.objects.count()
+        total_annotations = 0
         total_users = User.objects.count()
-        total_comments = PdfComment.objects.count() + AnnotationComment.objects.count()
+        total_comments = PdfComment.objects.count()
 
         coverage_pct = round((annotated_pdfs / total_pdfs * 100) if total_pdfs > 0 else 0)
 
@@ -545,70 +539,13 @@ def username_check(request):
     return JsonResponse({"available": not exists})
 
 
-def _annotation_to_dict(annotation: Annotation, request=None) -> dict:
-    """Serialize Annotation and child items for the frontend."""
-    votes = list(annotation.votes.all())
-    upvotes = sum(1 for v in votes if v.value == 1)
-    downvotes = sum(1 for v in votes if v.value == -1)
-    user_vote = 0
-    is_owner = False
-    if request is not None and request.user.is_authenticated:
-        is_owner = request.user.id == annotation.user_id
-        for vote in votes:
-            if vote.user_id == request.user.id:
-                user_vote = vote.value
-                break
-    return {
-        "id": annotation.client_id,
-        "server_id": annotation.id,
-        "pdf": annotation.pdf_key,
-        "user": annotation.user.username,
-        "x": annotation.x,
-        "y": annotation.y,
-        "note": annotation.note or "",
-        "is_owner": is_owner,
-        "upvotes": upvotes,
-        "downvotes": downvotes,
-        "user_vote": user_vote,
-        "hash": str(annotation.hash) if annotation.hash else "",
-        "created_at": annotation.created_at.isoformat() if annotation.created_at else None,
-        "textItems": [
-            {
-                "x": item.x,
-                "y": item.y,
-                "text": item.text,
-                "fontFamily": item.font_family,
-                "fontSize": item.font_size,
-                "fontWeight": item.font_weight,
-                "fontStyle": item.font_style,
-                "fontKerning": item.font_kerning,
-                "fontFeatureSettings": item.font_feature_settings,
-                "color": item.color,
-                "opacity": item.opacity,
-            }
-            for item in annotation.text_items.all()
-        ],
-        "arrows": [
-            {"x1": arrow.x1, "y1": arrow.y1, "x2": arrow.x2, "y2": arrow.y2}
-            for arrow in annotation.arrow_items.all()
-        ],
-    }
-
-
 @csrf_exempt
 def annotations_api(request):
-    """List or persist annotations for a PDF (auth required for writes)."""
     if request.method == "GET":
         pdf_key = (request.GET.get("pdf") or "").strip()
         if not pdf_key:
             return JsonResponse({"error": "Missing pdf"}, status=400)
         pdf_doc = PdfDocument.objects.filter(filename=pdf_key).first()
-        annotations = (
-            Annotation.objects.filter(pdf_key=pdf_key)
-            .select_related("user")
-            .prefetch_related("text_items", "arrow_items", "votes")
-        )
-        payload = [_annotation_to_dict(a, request=request) for a in annotations]
         pdf_comments = []
         if pdf_doc is not None:
             pdf_comments = [
@@ -618,167 +555,21 @@ def annotations_api(request):
                 .prefetch_related("votes")
                 .order_by("created_at")
             ]
-        return JsonResponse({"annotations": payload, "pdf_comments": pdf_comments})
-
+        return JsonResponse({"annotations": [], "pdf_comments": pdf_comments, "source": "decentralized"})
     if request.method == "POST":
-        if not request.user.is_authenticated:
-            return JsonResponse({"error": "Login required"}, status=401)
-        try:
-            payload = json.loads(request.body.decode("utf-8") or "{}")
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        pdf_key = (payload.get("pdf") or "").strip()
-        annotations_payload = payload.get("annotations") or []
-        if not pdf_key:
-            return JsonResponse({"error": "Missing pdf"}, status=400)
-
-        seen_hashes = set()
-        seen_client_ids = set()
-        saved_mappings = []
-        for ann in annotations_payload:
-            client_id = str(ann.get("id") or "").strip()
-            if not client_id:
-                continue
-            ann_hash = ann.get("hash")
-            if ann_hash:
-                seen_hashes.add(ann_hash)
-                existing = Annotation.objects.filter(hash=ann_hash).first()
-                if existing and existing.user_id != request.user.id:
-                    continue
-                annotation_obj, _ = Annotation.objects.update_or_create(
-                    hash=ann_hash,
-                    defaults={
-                        "pdf_key": pdf_key,
-                        "user": request.user,
-                        "client_id": client_id,
-                        "x": float(ann.get("x", 0)),
-                        "y": float(ann.get("y", 0)),
-                        "note": ann.get("note") or "",
-                    },
-                )
-            else:
-                seen_client_ids.add(client_id)
-                annotation_obj, _ = Annotation.objects.update_or_create(
-                    pdf_key=pdf_key,
-                    user=request.user,
-                    client_id=client_id,
-                    defaults={
-                        "x": float(ann.get("x", 0)),
-                        "y": float(ann.get("y", 0)),
-                        "note": ann.get("note") or "",
-                    },
-                )
-            saved_mappings.append({
-                "client_id": client_id,
-                "server_id": annotation_obj.id,
-                "hash": str(annotation_obj.hash) if annotation_obj.hash else "",
-            })
-            TextItem.objects.filter(annotation=annotation_obj).delete()
-            ArrowItem.objects.filter(annotation=annotation_obj).delete()
-
-            for item in ann.get("textItems", []):
-                TextItem.objects.create(
-                    annotation=annotation_obj,
-                    x=float(item.get("x", 0)),
-                    y=float(item.get("y", 0)),
-                    text=item.get("text", "") or "",
-                    font_family=item.get("fontFamily", "") or "",
-                    font_size=item.get("fontSize", "") or "",
-                    font_weight=item.get("fontWeight", "") or "",
-                    font_style=item.get("fontStyle", "") or "",
-                    font_kerning=item.get("fontKerning", "") or "",
-                    font_feature_settings=item.get("fontFeatureSettings", "") or "",
-                    color=item.get("color", "") or "",
-                    opacity=float(item.get("opacity", 1) or 1),
-                )
-            for arrow in ann.get("arrows", []):
-                ArrowItem.objects.create(
-                    annotation=annotation_obj,
-                    x1=float(arrow.get("x1", 0)),
-                    y1=float(arrow.get("y1", 0)),
-                    x2=float(arrow.get("x2", 0)),
-                    y2=float(arrow.get("y2", 0)),
-                )
-
-        delete_qs = Annotation.objects.filter(pdf_key=pdf_key, user=request.user)
-        if seen_hashes:
-            delete_qs = delete_qs.exclude(hash__in=seen_hashes)
-        if seen_client_ids:
-            delete_qs = delete_qs.exclude(client_id__in=seen_client_ids, hash__isnull=True)
-        delete_qs.delete()
-        PdfDocument.objects.filter(filename=pdf_key).update(
-            annotation_count=Annotation.objects.filter(pdf_key=pdf_key).count()
-            + PdfComment.objects.filter(pdf__filename=pdf_key).count()
+        return JsonResponse(
+            {"error": "Server annotation storage has been removed; use decentralized sync"},
+            status=410,
         )
-        return JsonResponse({"ok": True, "mappings": saved_mappings})
-
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
 
 @csrf_exempt
 def annotation_votes(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Login required"}, status=401)
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-    annotation_id = payload.get("annotation_id")
-    value = payload.get("value")
-    if annotation_id is None or value not in (-1, 1):
-        return JsonResponse({"error": "Invalid payload"}, status=400)
-    try:
-        annotation = Annotation.objects.get(id=annotation_id)
-    except Annotation.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
-    if annotation.user_id == request.user.id:
-        return JsonResponse({"error": "Cannot vote own annotation"}, status=403)
-
-    vote, created = AnnotationVote.objects.get_or_create(
-        annotation=annotation,
-        user=request.user,
-        defaults={"value": value},
+    return JsonResponse(
+        {"error": "Annotation voting is no longer handled by Django storage"},
+        status=410,
     )
-    if not created:
-        if vote.value == value:
-            vote.delete()
-        else:
-            vote.value = value
-            vote.save(update_fields=["value"])
-
-    upvotes = AnnotationVote.objects.filter(annotation=annotation, value=1).count()
-    downvotes = AnnotationVote.objects.filter(annotation=annotation, value=-1).count()
-    user_vote = 0
-    try:
-        user_vote = AnnotationVote.objects.get(annotation=annotation, user=request.user).value
-    except AnnotationVote.DoesNotExist:
-        user_vote = 0
-    return JsonResponse({"upvotes": upvotes, "downvotes": downvotes, "user_vote": user_vote})
-
-
-def _comment_to_dict(comment, request=None):
-    votes = list(comment.votes.all())
-    upvotes = sum(1 for v in votes if v.value == 1)
-    downvotes = sum(1 for v in votes if v.value == -1)
-    user_vote = 0
-    if request is not None and request.user.is_authenticated:
-        for vote in votes:
-            if vote.user_id == request.user.id:
-                user_vote = vote.value
-                break
-    return {
-        "id": comment.id,
-        "annotation_id": comment.annotation_id,
-        "parent_id": comment.parent_id,
-        "user": comment.user.username,
-        "body": comment.body,
-        "created_at": comment.created_at.isoformat() if comment.created_at else None,
-        "upvotes": upvotes,
-        "downvotes": downvotes,
-        "user_vote": user_vote,
-    }
 
 
 def _pdf_comment_to_dict(comment, request=None):
@@ -1017,7 +808,7 @@ def notifications_view(request):
         return redirect("login")
     notifications = (
         Notification.objects.filter(user=request.user)
-        .select_related("annotation", "annotation_comment", "pdf_comment", "pdf_comment_reply")
+        .select_related("pdf_comment", "pdf_comment_reply")
         .order_by("-created_at")
     )
     items = []
@@ -1025,16 +816,7 @@ def notifications_view(request):
         body = ""
         reply_body = ""
         actor = "Someone"
-        if notif.notif_type == Notification.TYPE_ANNOTATION_REPLY:
-            if notif.annotation_comment and notif.annotation_comment.user_id:
-                actor = notif.annotation_comment.user.username
-            if notif.annotation and (notif.annotation.note or "").strip():
-                body = notif.annotation.note.strip()
-            elif notif.annotation_comment:
-                body = notif.annotation_comment.body
-            if notif.annotation_comment:
-                reply_body = notif.annotation_comment.body
-        elif notif.notif_type == Notification.TYPE_PDF_COMMENT_REPLY:
+        if notif.notif_type == Notification.TYPE_PDF_COMMENT_REPLY:
             if notif.pdf_comment_reply and notif.pdf_comment_reply.user_id:
                 actor = notif.pdf_comment_reply.user.username
             if notif.pdf_comment:
@@ -1042,11 +824,7 @@ def notifications_view(request):
             if notif.pdf_comment_reply:
                 reply_body = notif.pdf_comment_reply.body
         target_url = "#"
-        if notif.notif_type == Notification.TYPE_ANNOTATION_REPLY and notif.annotation:
-            target_url = f"/{notif.annotation.pdf_key.replace('.pdf', '')}/{notif.annotation.hash}"
-            if notif.annotation_comment:
-                target_url = f"{target_url}?reply={notif.annotation_comment.id}"
-        elif notif.notif_type == Notification.TYPE_PDF_COMMENT_REPLY and notif.pdf_comment:
+        if notif.notif_type == Notification.TYPE_PDF_COMMENT_REPLY and notif.pdf_comment:
             target_url = f"/{notif.pdf_comment.pdf.filename.replace('.pdf', '')}/{notif.pdf_comment.hash}"
             if notif.pdf_comment_reply:
                 target_url = f"{target_url}?reply={notif.pdf_comment_reply.id}"
@@ -1084,114 +862,23 @@ def notifications_mark_read(request):
 
 @csrf_exempt
 def annotation_comments(request):
-    if request.method == "GET":
-        annotation_id = request.GET.get("annotation_id")
-        if not annotation_id:
-            return JsonResponse({"error": "Missing annotation_id"}, status=400)
-        comments = (
-            AnnotationComment.objects.filter(annotation_id=annotation_id)
-            .select_related("user")
-            .prefetch_related("votes")
-            .order_by("created_at")
-        )
-        payload = [_comment_to_dict(c, request=request) for c in comments]
-        return JsonResponse({"comments": payload})
-
-    if request.method == "POST":
-        if not request.user.is_authenticated:
-            return JsonResponse({"error": "Login required"}, status=401)
-        try:
-            payload = json.loads(request.body.decode("utf-8") or "{}")
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
-        annotation_id = payload.get("annotation_id")
-        body = (payload.get("body") or "").strip()
-        parent_id = payload.get("parent_id")
-        if not annotation_id or not body:
-            return JsonResponse({"error": "Missing fields"}, status=400)
-        try:
-            annotation = Annotation.objects.get(id=annotation_id)
-        except Annotation.DoesNotExist:
-            return JsonResponse({"error": "Not found"}, status=404)
-        parent = None
-        if parent_id:
-            try:
-                parent = AnnotationComment.objects.get(id=parent_id, annotation=annotation)
-            except AnnotationComment.DoesNotExist:
-                return JsonResponse({"error": "Invalid parent"}, status=400)
-        comment = AnnotationComment.objects.create(annotation=annotation, user=request.user, parent=parent, body=body)
-        target_user_id = annotation.user_id
-        if target_user_id and target_user_id != request.user.id:
-            Notification.objects.create(
-                user_id=target_user_id,
-                notif_type=Notification.TYPE_ANNOTATION_REPLY,
-                annotation=annotation,
-                annotation_comment=comment,
-            )
-        return JsonResponse({"comment": _comment_to_dict(comment, request=request)})
-
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+    return JsonResponse(
+        {"error": "Annotation comments are no longer handled by Django storage"},
+        status=410,
+    )
 
 
 @csrf_exempt
 def delete_comment(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Login required"}, status=401)
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-    comment_id = payload.get("comment_id")
-    if not comment_id:
-        return JsonResponse({"error": "Missing comment_id"}, status=400)
-    try:
-        comment = AnnotationComment.objects.get(id=comment_id, user=request.user)
-    except AnnotationComment.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
-    comment.delete()
-    return JsonResponse({"ok": True})
+    return JsonResponse(
+        {"error": "Annotation comment deletion is no longer handled by Django storage"},
+        status=410,
+    )
 
 
 @csrf_exempt
 def comment_votes(request):
-    if request.method != "POST":
-        return JsonResponse({"error": "Method not allowed"}, status=405)
-    if not request.user.is_authenticated:
-        return JsonResponse({"error": "Login required"}, status=401)
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON"}, status=400)
-    comment_id = payload.get("comment_id")
-    value = payload.get("value")
-    if comment_id is None or value not in (-1, 1):
-        return JsonResponse({"error": "Invalid payload"}, status=400)
-    try:
-        comment = AnnotationComment.objects.get(id=comment_id)
-    except AnnotationComment.DoesNotExist:
-        return JsonResponse({"error": "Not found"}, status=404)
-    if comment.user_id == request.user.id:
-        return JsonResponse({"error": "Cannot vote own comment"}, status=403)
-
-    vote, created = CommentVote.objects.get_or_create(
-        comment=comment,
-        user=request.user,
-        defaults={"value": value},
+    return JsonResponse(
+        {"error": "Annotation comment voting is no longer handled by Django storage"},
+        status=410,
     )
-    if not created:
-        if vote.value == value:
-            vote.delete()
-        else:
-            vote.value = value
-            vote.save(update_fields=["value"])
-
-    upvotes = CommentVote.objects.filter(comment=comment, value=1).count()
-    downvotes = CommentVote.objects.filter(comment=comment, value=-1).count()
-    user_vote = 0
-    try:
-        user_vote = CommentVote.objects.get(comment=comment, user=request.user).value
-    except CommentVote.DoesNotExist:
-        user_vote = 0
-    return JsonResponse({"upvotes": upvotes, "downvotes": downvotes, "user_vote": user_vote})

@@ -24,9 +24,6 @@
 - PDF index (`PdfDocument`):
   - Filename/path metadata
   - Aggregate counters (`annotation_count`, `vote_score`)
-- Annotation system:
-  - `Annotation`, `TextItem`, `ArrowItem`
-  - Votes and threaded comments
 - PDF-level discussion:
   - `PdfComment`, `PdfCommentReply`, votes
 - Notifications:
@@ -41,6 +38,13 @@
   - JS: `static/epstein_ui/browse.js`
 - Shared styles:
   - `static/epstein_ui/style.css`
+
+## Annotation Read Path
+- Django no longer stores annotation rows/tables.
+- `GET /annotations/` returns:
+  - `annotations: []`
+  - `pdf_comments: [...]` (still server-backed)
+- Annotation mutation/comment/vote endpoints in Django return `410 Gone` and are deprecated in favor of decentralized sync.
 
 ## PDF Indexing and Counters
 - Index refresh command:

@@ -16,6 +16,13 @@
    - `uv run python backend/manage.py index_pdfs`
 3. Check query/response timing via browser network panel and server logs.
 
+## Annotation Visibility Note
+- Server-side annotation storage is removed:
+  - Django keeps no annotation tables.
+  - `GET /annotations/` returns no annotation rows.
+  - Annotation mutation/comment/vote endpoints return `410`.
+- If users report "no annotations visible", confirm whether the client is expected to source them from decentralized sync instead of Django DB.
+
 ## Static/UI Update Issues
 Symptoms:
 - Users only see new UI after hard refresh.

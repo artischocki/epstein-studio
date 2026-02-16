@@ -24,6 +24,10 @@
   - `uv run python backend/manage.py collectstatic --noinput`
 - Reindex PDFs:
   - `uv run python backend/manage.py index_pdfs`
+- Annotation read endpoint behavior:
+  - `GET /annotations/?pdf=<filename.pdf>` returns an empty `annotations` list by design while decentralization work is in progress.
+- Annotation write/comment/vote endpoint behavior:
+  - `POST /annotations/`, `POST /annotation-votes/`, `GET|POST /annotation-comments/`, `POST /comment-votes/`, and `POST /comment-delete/` return `410`.
 - Run desktop app:
   - `npm install`
   - `npm run electron:dev`
