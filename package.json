@@ -3,9 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "description": "Electron shell for running Epstein Studio as a desktop app.",
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "main": "electron/main.js",
   "scripts": {
     "electron:dev": "electron electron/main.js"
+  },
+  "dependencies": {
+    "@chainsafe/libp2p-gossipsub": "*",
+    "@chainsafe/libp2p-noise": "*",
+    "@libp2p/bootstrap": "*",
+    "@libp2p/identify": "*",
+    "@libp2p/kad-dht": "*",
+    "@libp2p/tcp": "*",
+    "@libp2p/websockets": "*",
+    "libp2p": "*"
   },
   "devDependencies": {
     "electron": "^40.4.1"

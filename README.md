@@ -91,6 +91,10 @@ Use this when you want to run Epstein Studio as a desktop app on your local mach
 #### 1) One-time setup
 
 ```bash
+# use the project Node version (required by libp2p deps)
+nvm install 20.19.0
+nvm use 20.19.0
+
 # install backend deps
 uv sync
 
@@ -127,6 +131,11 @@ Close the Electron window. The spawned Django server is stopped on app exit.
 - Default URL target is `127.0.0.1:8000`.
 - If port `8000` is already used by another service, the Electron launcher auto-selects the next free port.
 - You can override host/port with `ELECTRON_DJANGO_HOST` and `ELECTRON_DJANGO_PORT`.
+- Electron also attempts to start a local libp2p node (logs prefixed with `[libp2p]`).
+- Optional libp2p env vars:
+  - `LIBP2P_BOOTSTRAP` (comma-separated peer multiaddrs)
+  - `LIBP2P_LISTEN` (comma-separated listen multiaddrs)
+  - `LIBP2P_TOPIC` (default: `epstein/annotations/v1`)
 - Linux/Ubuntu: the launcher defaults to `ozone-platform-hint=x11` so native title bar buttons and window drag work reliably.
 
 Example overrides:

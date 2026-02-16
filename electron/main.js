@@ -47,6 +47,21 @@ const PORT_SCAN_LIMIT = 50;
 let djangoProcess = null;
 let quitting = false;
 let appUrl = `http://${DJANGO_HOST}:${DJANGO_PORT}/`;
+let p2pNode = null;
+
+const LIBP2P_TOPIC = process.env.LIBP2P_TOPIC || "epstein/annotations/v1";
+const LIBP2P_BOOTSTRAP = (process.env.LIBP2P_BOOTSTRAP || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const LIBP2P_LISTEN = (process.env.LIBP2P_LISTEN || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+function logP2P(message) {
+  console.log(`[libp2p] ${message}`);
+}
 
 function canRun(cmd, args = ["--version"]) {
   const result = spawnSync(cmd, args, { stdio: "ignore" });
@@ -177,6 +192,79 @@ function stopDjangoServer() {
   djangoProcess = null;
 }
 
+async function startP2PNode() {
+  if (p2pNode) {
+    return;
+  }
+  try {
+    const libp2pPkg = await import("libp2p");
+    const noisePkg = await import("@chainsafe/libp2p-noise");
+    const gossipsubPkg = await import("@chainsafe/libp2p-gossipsub");
+    const tcpPkg = await import("@libp2p/tcp");
+    const webSocketsPkg = await import("@libp2p/websockets");
+    const bootstrapPkg = await import("@libp2p/bootstrap");
+    const identifyPkg = await import("@libp2p/identify");
+    const dhtPkg = await import("@libp2p/kad-dht");
+
+    const listen = LIBP2P_LISTEN.length > 0
+      ? LIBP2P_LISTEN
+      : ["/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/tcp/0/ws"];
+    const peerDiscovery = [];
+    if (LIBP2P_BOOTSTRAP.length > 0) {
+      peerDiscovery.push(bootstrapPkg.bootstrap({ list: LIBP2P_BOOTSTRAP }));
+    }
+
+    p2pNode = await libp2pPkg.createLibp2p({
+      addresses: { listen },
+      transports: [tcpPkg.tcp(), webSocketsPkg.webSockets()],
+      connectionEncryption: [noisePkg.noise()],
+      peerDiscovery,
+      services: {
+        identify: identifyPkg.identify(),
+        dht: dhtPkg.kadDHT(),
+        pubsub: gossipsubPkg.gossipsub({ allowPublishToZeroTopicPeers: true }),
+      },
+    });
+
+    await p2pNode.start();
+    logP2P(`started peerId=${p2pNode.peerId.toString()}`);
+    const addresses = p2pNode.getMultiaddrs().map((addr) => addr.toString()).join(", ");
+    logP2P(`listen=${addresses || "none"}`);
+
+    if (p2pNode.services?.pubsub) {
+      p2pNode.services.pubsub.subscribe(LIBP2P_TOPIC);
+      logP2P(`subscribed topic=${LIBP2P_TOPIC}`);
+      p2pNode.services.pubsub.addEventListener("message", (event) => {
+        const from = event?.detail?.from?.toString?.() || "unknown";
+        const size = event?.detail?.data?.length || 0;
+        logP2P(`message topic=${LIBP2P_TOPIC} from=${from} bytes=${size}`);
+      });
+    }
+
+    p2pNode.addEventListener("peer:discovery", (event) => {
+      const id = event?.detail?.id?.toString?.() || "unknown";
+      logP2P(`discovered peer=${id}`);
+    });
+  } catch (error) {
+    // Keep app functional even when p2p dependencies are not available yet.
+    logP2P(`disabled (${error.message})`);
+  }
+}
+
+async function stopP2PNode() {
+  if (!p2pNode) {
+    return;
+  }
+  try {
+    await p2pNode.stop();
+    logP2P("stopped");
+  } catch (error) {
+    logP2P(`stop error (${error.message})`);
+  } finally {
+    p2pNode = null;
+  }
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     title: "Epstein Studio",
@@ -197,6 +285,8 @@ function createWindow() {
 
 async function bootstrap() {
   try {
+    await startP2PNode();
+
     const configuredUrl = buildUrl(DJANGO_PORT);
     const existingAppOnConfiguredPort = await looksLikeEpsteinStudio(configuredUrl);
     if (existingAppOnConfiguredPort) {
@@ -232,6 +322,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   quitting = true;
+  void stopP2PNode();
   stopDjangoServer();
 });
 

@@ -14,6 +14,8 @@
 ## Local Setup
 1. Install dependencies:
    - `uv sync`
+   - `nvm install 20.19.0`
+   - `nvm use 20.19.0`
 2. Run migrations:
    - `uv run python backend/manage.py migrate`
 3. Start dev server:
@@ -38,8 +40,14 @@
 - Auth route behavior:
   - `/login/`, `/register/`, `/logout/`, and `/username-check/` are removed.
 - Run desktop app:
+  - `nvm use 20.19.0`
   - `npm install`
   - `npm run electron:dev`
+  - On startup, Electron attempts to boot a libp2p node and logs status with `[libp2p] ...` lines.
+  - Optional libp2p overrides:
+    - `LIBP2P_BOOTSTRAP` (comma-separated multiaddrs)
+    - `LIBP2P_LISTEN` (comma-separated listen multiaddrs)
+    - `LIBP2P_TOPIC` (default: `epstein/annotations/v1`)
   - Electron keeps native OS title bar controls and auto-hides the app menu row (`File/Edit/...`) by default.
   - Uses `127.0.0.1:8000` by default; if occupied, it scans for the next free port.
   - Optional overrides: `ELECTRON_DJANGO_HOST`, `ELECTRON_DJANGO_PORT`.

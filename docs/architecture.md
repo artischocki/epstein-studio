@@ -13,6 +13,7 @@
   - Electron main process in `electron/main.js`.
   - Starts Django locally, then loads the app URL in a desktop window.
   - Uses the default native OS title bar with standard window controls.
+  - Starts a local libp2p node (gossipsub + DHT) for annotation-network transport groundwork.
 - API-like endpoints:
   - Implemented in `backend/apps/epstein_ui/views.py`.
 - Identity middleware:
