@@ -4,8 +4,38 @@ const net = require("node:net");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 
-if (process.platform === "linux" && !process.env.ELECTRON_OZONE_PLATFORM_HINT) {
-  app.commandLine.appendSwitch("ozone-platform-hint", "x11");
+const isLinux = process.platform === "linux";
+const explicitLinuxPlatform = process.env.ELECTRON_OZONE_PLATFORM || process.env.OZONE_PLATFORM || "";
+const explicitLinuxHint = process.env.ELECTRON_OZONE_PLATFORM_HINT || "";
+
+let resolvedLinuxPlatform = "";
+if (explicitLinuxPlatform) {
+  resolvedLinuxPlatform = explicitLinuxPlatform;
+} else if (explicitLinuxHint === "x11" || explicitLinuxHint === "wayland") {
+  resolvedLinuxPlatform = explicitLinuxHint;
+} else {
+  resolvedLinuxPlatform = "x11";
+}
+
+const disableGpuEnv = process.env.ELECTRON_DISABLE_GPU || "";
+const shouldDisableGpu = disableGpuEnv === "1" || (isLinux && resolvedLinuxPlatform === "wayland");
+
+if (shouldDisableGpu) {
+  app.disableHardwareAcceleration();
+}
+
+if (isLinux) {
+  if (explicitLinuxPlatform) {
+    app.commandLine.appendSwitch("ozone-platform", explicitLinuxPlatform);
+  } else if (explicitLinuxHint) {
+    app.commandLine.appendSwitch("ozone-platform-hint", explicitLinuxHint);
+  } else {
+    app.commandLine.appendSwitch("enable-features", "UseOzonePlatform");
+    app.commandLine.appendSwitch("ozone-platform", "x11");
+  }
+  if (shouldDisableGpu) {
+    app.commandLine.appendSwitch("disable-gpu-compositing");
+  }
 }
 
 const DJANGO_HOST = process.env.ELECTRON_DJANGO_HOST || "127.0.0.1";
@@ -155,14 +185,7 @@ function createWindow() {
     minWidth: 1200,
     minHeight: 760,
     frame: true,
-    thickFrame: true,
-    movable: true,
-    minimizable: true,
-    maximizable: true,
-    closable: true,
-    resizable: true,
-    fullscreenable: true,
-    autoHideMenuBar: false,
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

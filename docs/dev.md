@@ -27,9 +27,13 @@
 - Run desktop app:
   - `npm install`
   - `npm run electron:dev`
+  - Electron keeps native OS title bar controls and auto-hides the app menu row (`File/Edit/...`) by default.
   - Uses `127.0.0.1:8000` by default; if occupied, it scans for the next free port.
   - Optional overrides: `ELECTRON_DJANGO_HOST`, `ELECTRON_DJANGO_PORT`.
-  - On Linux/Ubuntu, Electron is started with `ozone-platform-hint=x11` by default to ensure native window decorations are visible.
+  - On Linux/Ubuntu (including Pop!_OS), Electron is forced to `ozone-platform=x11` by default for reliable native title bar controls.
+  - Optional Linux overrides: `ELECTRON_OZONE_PLATFORM` or `ELECTRON_OZONE_PLATFORM_HINT`.
+  - When running with Wayland (`ELECTRON_OZONE_PLATFORM=wayland`), GPU acceleration is disabled automatically to avoid blank windows on some Linux GPU/driver setups.
+  - Manual fallback: `ELECTRON_DISABLE_GPU=1 npm run electron:dev`.
 
 ## Paths You Will Touch Most
 - Templates: `backend/apps/epstein_ui/templates/epstein_ui/`
