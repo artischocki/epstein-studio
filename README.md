@@ -31,7 +31,6 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 | Backend | Django 5.2 |
 | Database | PostgreSQL 16 |
 | PDF Rendering | poppler-utils (pdftoppm) |
-| OCR | Tesseract |
 | Server | Gunicorn |
 | Frontend | Vanilla JS, SVG canvas |
 | Package Manager | uv |
@@ -46,7 +45,7 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 - Python 3.9+
 - PostgreSQL
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- System packages: `poppler-utils`, `tesseract-ocr`
+- System package: `poppler-utils`
 
 ### Local Development
 
@@ -115,8 +114,6 @@ epstein/
 │   │       ├── views.py      # API endpoints and page views
 │   │       ├── templates/    # HTML templates
 │   │       └── static/       # JS, CSS, fonts, icons
-│   └── email_header_extractor/
-│       └── extract_headers.py  # OCR-based email header extraction utility
 ├── pyproject.toml
 ├── uv.lock
 ├── Dockerfile

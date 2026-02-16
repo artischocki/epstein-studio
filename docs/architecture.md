@@ -4,6 +4,7 @@
 - Django monolith with server-rendered templates.
 - Interactive behavior implemented with static JS files.
 - PDF metadata and collaboration data in SQL database.
+- Repository/package metadata is centered on `epstein-studio`; no separate OCR/extractor subsystem is part of the app runtime.
 
 ## Main Components
 - Web app:
