@@ -9,6 +9,7 @@
 - User identity:
   - No login/register flow.
   - Middleware creates a persistent anonymous hash (`epstein_user_hash` cookie) and uses it as `request.user.username`.
+  - Frontend templates always expose authenticated mode (`data-auth="1"`) and consume the persistent hash as `data-user`.
 
 ## Local Setup
 1. Install dependencies:

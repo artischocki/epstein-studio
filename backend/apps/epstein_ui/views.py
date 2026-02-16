@@ -41,11 +41,12 @@ def _sync_pdf_index() -> list[PdfDocument]:
     """Sync the PdfDocument table with PDFs on disk."""
     pdf_paths = _list_pdfs_on_disk()
     if not pdf_paths:
+        # Keep existing index when DATA_DIR is temporarily unavailable.
+        # This avoids wiping persisted state on transient mount/path issues.
         try:
-            PdfDocument.objects.all().delete()
+            return list(PdfDocument.objects.all())
         except (OperationalError, ProgrammingError):
-            pass
-        return []
+            return []
 
     seen_paths = {str(p) for p in pdf_paths}
     try:
@@ -379,6 +380,12 @@ def search_suggestions(request):
 
 def browse_list(request):
     """Return paginated PDF filenames for browsing."""
+    try:
+        if not PdfDocument.objects.exists():
+            _sync_pdf_index()
+    except (OperationalError, ProgrammingError):
+        pass
+
     page = request.GET.get("page") or "1"
     sort = (request.GET.get("sort") or "name").lower()
     query = (request.GET.get("q") or "").strip()

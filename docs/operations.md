@@ -8,6 +8,7 @@
 - Behavior:
   - Syncs DB PDF index with files on disk.
   - Refreshes aggregate counters used by browse sorting and metadata.
+  - If `DATA_DIR` is temporarily unavailable/empty, existing indexed rows are preserved instead of being wiped.
 
 ## When Browse Looks Wrong or Slow
 1. Verify DB schema is migrated:
