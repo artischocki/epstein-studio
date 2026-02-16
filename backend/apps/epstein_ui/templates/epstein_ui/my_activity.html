@@ -1,0 +1,122 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>My Activity &bull; Epstein Studio</title>
+    <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
+    <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div class="topbar-left">
+            <a href="/" class="brand">Epstein Studio</a>
+            <div class="construction-hint">Beta! This site is currently under construction... If something looks wrong: hard refresh (Ctrl + Shift + R).</div>
+          </div>
+          <div class="topbar-actions">
+            <a class="btn btn-secondary" href="/browse/">Browse</a>
+            <a class="btn btn-secondary" href="/about/">About</a>
+          </div>
+        </div>
+      </header>
+
+      <main class="about-page">
+        <div class="about-content">
+
+          <section class="about-hero">
+            <h1 class="about-title">Your Activity</h1>
+            <p class="about-subtitle">Everything you've contributed, in one place.</p>
+            <div class="start-stats" style="margin-top: 24px;">
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_annotations }}</span>
+                <span class="start-stat-label">Annotations</span>
+              </div>
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_comments }}</span>
+                <span class="start-stat-label">Comments</span>
+              </div>
+              <div class="start-stat">
+                <span class="start-stat-value">{{ total_votes }}</span>
+                <span class="start-stat-label">Votes</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Your Annotations</h2>
+            {% if annotation_docs %}
+              <ol class="start-ranked-list">
+                {% for doc in annotation_docs %}
+                  <li>
+                    <a href="/{{ doc.pdf_key|cut:'.pdf' }}">
+                      <span class="start-ranked-name">{{ doc.pdf_key }}</span>
+                      <span class="start-ranked-stat">{{ doc.count }} annotation{{ doc.count|pluralize }} &middot; {{ doc.latest|date:"M j, Y" }}</span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ol>
+            {% else %}
+              <p class="start-empty">No annotations yet. Open a document and start annotating.</p>
+            {% endif %}
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Your Comments</h2>
+            {% if pdf_comments or annotation_comments %}
+              <div class="my-activity-comments">
+                {% for c in pdf_comments %}
+                  <a class="my-activity-card" href="/{{ c.pdf.filename|cut:'.pdf' }}">
+                    <div class="notification-meta">
+                      <span>On {{ c.pdf.filename }}</span>
+                      <span class="notification-time">{{ c.created_at|date:"M j, Y" }}</span>
+                    </div>
+                    <div class="notification-body">{{ c.body|truncatechars:120 }}</div>
+                  </a>
+                {% endfor %}
+                {% for c in annotation_comments %}
+                  <a class="my-activity-card" href="/{{ c.annotation.pdf_key|cut:'.pdf' }}">
+                    <div class="notification-meta">
+                      <span>On annotation in {{ c.annotation.pdf_key }}</span>
+                      <span class="notification-time">{{ c.created_at|date:"M j, Y" }}</span>
+                    </div>
+                    <div class="notification-body">{{ c.body|truncatechars:120 }}</div>
+                  </a>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p class="start-empty">No comments yet. Join a discussion on any document.</p>
+            {% endif %}
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Your Votes</h2>
+            {% if pdf_votes %}
+              <ol class="start-ranked-list">
+                {% for v in pdf_votes %}
+                  <li>
+                    <a href="/{{ v.pdf.filename|cut:'.pdf' }}">
+                      <span class="start-ranked-name">{{ v.pdf.filename }}</span>
+                      <span class="start-ranked-stat">
+                        {% if v.value == 1 %}
+                          <span class="my-vote-up">+1 Promising</span>
+                        {% else %}
+                          <span class="my-vote-down">-1 Not Promising</span>
+                        {% endif %}
+                      </span>
+                    </a>
+                  </li>
+                {% endfor %}
+              </ol>
+            {% else %}
+              <p class="start-empty">No votes yet. Rate documents to surface promising leads.</p>
+            {% endif %}
+          </section>
+
+        </div>
+      </main>
+    </div>
+  </body>
+</html>

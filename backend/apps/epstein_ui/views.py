@@ -16,8 +16,9 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q
 from django.db.utils import OperationalError, ProgrammingError
+from django.contrib.auth.decorators import login_required
 
 from .models import (
     Annotation,
@@ -233,6 +234,56 @@ def browse(request):
 def about(request):
     """Render the about page."""
     return render(request, "epstein_ui/about.html")
+
+
+@login_required(login_url="/login/")
+def my_activity(request):
+    """Render the personal activity dashboard."""
+    user = request.user
+
+    # Annotations grouped by pdf_key
+    annotation_docs = (
+        Annotation.objects.filter(user=user)
+        .values("pdf_key")
+        .annotate(count=Count("id"), latest=Max("created_at"))
+        .order_by("-latest")
+    )
+
+    # Recent PDF comments
+    pdf_comments = (
+        PdfComment.objects.filter(user=user)
+        .select_related("pdf")
+        .order_by("-created_at")[:20]
+    )
+
+    # Recent annotation comments
+    annotation_comments_qs = (
+        AnnotationComment.objects.filter(user=user)
+        .select_related("annotation")
+        .order_by("-created_at")[:20]
+    )
+
+    # Votes cast
+    pdf_votes_qs = PdfVote.objects.filter(user=user).select_related("pdf")
+    annotation_votes_count = AnnotationVote.objects.filter(user=user).count()
+
+    # Summary stats
+    total_annotations = Annotation.objects.filter(user=user).count()
+    total_comments = (
+        PdfComment.objects.filter(user=user).count()
+        + AnnotationComment.objects.filter(user=user).count()
+    )
+    total_votes = pdf_votes_qs.count() + annotation_votes_count
+
+    return render(request, "epstein_ui/my_activity.html", {
+        "annotation_docs": annotation_docs,
+        "pdf_comments": pdf_comments,
+        "annotation_comments": annotation_comments_qs,
+        "pdf_votes": pdf_votes_qs,
+        "total_annotations": total_annotations,
+        "total_comments": total_comments,
+        "total_votes": total_votes,
+    })
 
 
 GITHUB_REPO = "artischocki/epstein-studio"

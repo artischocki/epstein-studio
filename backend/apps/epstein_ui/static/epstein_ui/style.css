@@ -858,6 +858,37 @@ body {
   overflow-wrap: anywhere;
 }
 
+.my-activity-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.my-activity-card {
+  background: #1a1f22;
+  border: 1px solid #2a3236;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.my-activity-card:hover {
+  border-color: rgba(57, 255, 20, 0.4);
+}
+
+.my-vote-up {
+  color: #39ff14;
+}
+
+.my-vote-down {
+  color: #ff4444;
+}
+
 .browse-header {
   display: flex;
   align-items: center;
