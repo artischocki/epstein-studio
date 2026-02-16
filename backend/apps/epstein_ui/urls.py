@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path("", views.start_page, name="start"),
+    path("disclaimer/", views.disclaimer, name="disclaimer"),
     path("random-pdf/", views.random_pdf, name="random_pdf"),
     path("search-pdf/", views.search_pdf, name="search_pdf"),
     path("search-suggestions/", views.search_suggestions, name="search_suggestions"),
@@ -28,6 +29,7 @@ urlpatterns = [
     path("notifications-count/", views.notifications_summary, name="notifications_summary"),
     path("notifications/", views.notifications_view, name="notifications_view"),
     path("notifications-read/", views.notifications_mark_read, name="notifications_read"),
+    path("my/", views.my_activity, name="my_activity"),
     path("<slug:pdf_slug>/<uuid:target_hash>/", views.index, name="index_pdf_comment"),
     re_path(r"^(?P<pdf_slug>[A-Za-z0-9_-]+)$", views.index, name="index_pdf"),
 ]

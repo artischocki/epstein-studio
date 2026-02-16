@@ -1,0 +1,120 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Disclaimer &bull; Epstein Studio</title>
+    <link rel="icon" href="{% static 'epstein_ui/favicon.ico' %}" type="image/x-icon" />
+    <link rel="stylesheet" href="{% static 'epstein_ui/style.css' %}" />
+  </head>
+  <body class="disclaimer-body">
+    <div class="page disclaimer-page">
+      <header class="topbar">
+        <div class="topbar-row">
+          <div class="topbar-left">
+            <span class="brand">Epstein Studio</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="about-page">
+        <div class="about-content">
+
+          <section class="about-hero">
+            <div class="disclaimer-badge">18+</div>
+            <h1 class="about-title">Before you continue</h1>
+            <p class="about-subtitle">
+              Epstein Studio provides access to court documents related to the
+              Jeffrey Epstein case. These materials contain references to sexual
+              abuse, exploitation of minors, and other deeply disturbing subject
+              matter.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Age Restriction</h2>
+            <p class="about-body">
+              You must be at least <strong>18 years old</strong> to use this
+              application. By proceeding you confirm that you meet this
+              requirement.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Content Warning</h2>
+            <p class="about-body">
+              The documents may contain graphic descriptions of abuse,
+              references to minors, and other sensitive material. Access this
+              content only if you are prepared to encounter such material.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Prohibited Conduct</h2>
+            <ul class="disclaimer-list">
+              <li>Harassment, doxxing, or targeting of any individual named in the documents</li>
+              <li>Defamation — presenting unverified claims as established fact</li>
+              <li>Distribution of personal information (addresses, phone numbers, etc.)</li>
+              <li>Incitement to violence or vigilante action</li>
+              <li>Any use that violates applicable local, national, or international law</li>
+            </ul>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">No Guarantee of Accuracy</h2>
+            <p class="about-body">
+              Documents are provided as-is from publicly available court
+              records. Annotations and comments are user-generated and have
+              not been verified. Nothing on this platform constitutes legal
+              advice or established fact.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Your Responsibility</h2>
+            <p class="about-body">
+              You are solely responsible for your use of this platform and
+              any content you create. The operators of Epstein Studio assume
+              no liability for user-generated content or for actions taken
+              based on information found here.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <h2 class="about-heading">Privacy</h2>
+            <p class="about-body">
+              This application does not collect personal data. Accounts are
+              anonymous. We do not track, log, or sell user activity. For
+              full details see our
+              <a href="/about/">Terms&nbsp;&amp;&nbsp;Conditions</a>.
+            </p>
+          </section>
+
+          <section class="about-section">
+            <form method="post" class="disclaimer-form">
+              {% csrf_token %}
+              <label class="disclaimer-checkbox-label">
+                <input type="checkbox" id="disclaimerCheck" required />
+                <span>
+                  I am at least 18 years old, I have read and understood the above,
+                  and I agree to use this platform responsibly and lawfully.
+                </span>
+              </label>
+              <button type="submit" class="btn disclaimer-btn" id="disclaimerSubmit" disabled>
+                I Understand &amp; Accept
+              </button>
+            </form>
+          </section>
+
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const cb = document.getElementById("disclaimerCheck");
+      const btn = document.getElementById("disclaimerSubmit");
+      cb.addEventListener("change", () => { btn.disabled = !cb.checked; });
+    </script>
+  </body>
+</html>

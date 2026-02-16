@@ -31,9 +31,9 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 | Backend | Django 5.2 |
 | Database | PostgreSQL 16 |
 | PDF Rendering | poppler-utils (pdftoppm) |
-| OCR | Tesseract |
 | Server | Gunicorn |
 | Frontend | Vanilla JS, SVG canvas |
+| Desktop Shell | Electron |
 | Package Manager | uv |
 | Deployment | Docker Compose |
 
@@ -46,7 +46,8 @@ Epstein Studio renders PDF pages in the browser and lets users pin annotations d
 - Python 3.9+
 - PostgreSQL
 - [uv](https://docs.astral.sh/uv/) (Python package manager)
-- System packages: `poppler-utils`, `tesseract-ocr`
+- Node.js 16+ (for Electron desktop app)
+- System package: `poppler-utils`
 
 ### Local Development
 
@@ -83,6 +84,21 @@ docker compose exec web uv run python manage.py migrate
 docker compose exec web uv run python manage.py index_pdfs
 ```
 
+### Desktop App (Electron)
+
+```bash
+# install electron dependencies
+npm install
+
+# start desktop app (spawns Django server automatically)
+npm run electron:dev
+```
+
+Notes:
+- Default URL target is `127.0.0.1:8000`.
+- If port `8000` is already used by another service, the Electron launcher auto-selects the next free port.
+- You can override host/port with `ELECTRON_DJANGO_HOST` and `ELECTRON_DJANGO_PORT`.
+
 ### Environment Variables
 
 | Variable | Description |
@@ -115,8 +131,9 @@ epstein/
 │   │       ├── views.py      # API endpoints and page views
 │   │       ├── templates/    # HTML templates
 │   │       └── static/       # JS, CSS, fonts, icons
-│   └── email_header_extractor/
-│       └── extract_headers.py  # OCR-based email header extraction utility
+├── electron/
+│   └── main.js               # Electron main process (starts Django + opens desktop window)
+├── package.json              # Electron scripts/dependencies
 ├── pyproject.toml
 ├── uv.lock
 ├── Dockerfile
