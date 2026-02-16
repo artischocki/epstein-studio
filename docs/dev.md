@@ -29,6 +29,7 @@
   - `npm run electron:dev`
   - Uses `127.0.0.1:8000` by default; if occupied, it scans for the next free port.
   - Optional overrides: `ELECTRON_DJANGO_HOST`, `ELECTRON_DJANGO_PORT`.
+  - On Linux/Ubuntu, Electron is started with `ozone-platform-hint=x11` by default to ensure native window decorations are visible.
 
 ## Paths You Will Touch Most
 - Templates: `backend/apps/epstein_ui/templates/epstein_ui/`

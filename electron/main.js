@@ -4,6 +4,10 @@ const net = require("node:net");
 const path = require("node:path");
 const { spawn, spawnSync } = require("node:child_process");
 
+if (process.platform === "linux" && !process.env.ELECTRON_OZONE_PLATFORM_HINT) {
+  app.commandLine.appendSwitch("ozone-platform-hint", "x11");
+}
+
 const DJANGO_HOST = process.env.ELECTRON_DJANGO_HOST || "127.0.0.1";
 const DJANGO_PORT = Number.parseInt(process.env.ELECTRON_DJANGO_PORT || "8000", 10);
 const SERVER_WAIT_TIMEOUT_MS = 30_000;
@@ -145,11 +149,20 @@ function stopDjangoServer() {
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
+    title: "Epstein Studio",
     width: 1600,
     height: 980,
     minWidth: 1200,
     minHeight: 760,
-    autoHideMenuBar: true,
+    frame: true,
+    thickFrame: true,
+    movable: true,
+    minimizable: true,
+    maximizable: true,
+    closable: true,
+    resizable: true,
+    fullscreenable: true,
+    autoHideMenuBar: false,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

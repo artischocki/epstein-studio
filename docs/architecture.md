@@ -12,6 +12,7 @@
 - Desktop shell:
   - Electron main process in `electron/main.js`.
   - Starts Django locally, then loads the app URL in a desktop window.
+  - Uses the default native OS title bar with standard window controls.
 - API-like endpoints:
   - Implemented in `backend/apps/epstein_ui/views.py`.
 - Routing:
