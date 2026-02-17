@@ -54,6 +54,8 @@
   - `app.js` saves annotation state in browser `localStorage` per `(user_hash, pdf_key)`.
   - Reloading the same browser/device restores annotations without Django DB storage.
   - In Electron, committed annotation state is broadcast as signed-less libp2p events (`epstein.annotation.state`) on `LIBP2P_TOPIC`.
+  - When a PDF is opened, renderer emits `epstein.annotation.request` events so connected peers can immediately rebroadcast their local snapshot for that PDF.
+  - Request responders load snapshot data from in-memory state and local persisted storage, so a peer can answer even when that PDF is not currently active in the UI.
   - Incoming events update per-PDF local state and are immediately applied to the active canvas when viewing the same PDF.
 
 ## PDF Indexing and Counters

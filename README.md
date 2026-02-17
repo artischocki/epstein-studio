@@ -133,6 +133,7 @@ Close the Electron window. The spawned Django server is stopped on app exit.
 - You can override host/port with `ELECTRON_DJANGO_HOST` and `ELECTRON_DJANGO_PORT`.
 - Electron also attempts to start a local libp2p node (logs prefixed with `[libp2p]`).
 - In Electron, committed annotation changes are broadcast over libp2p and applied on connected peers viewing the same PDF.
+- Opening a PDF requests existing peer snapshots for that PDF so annotations can appear immediately.
 - Optional libp2p env vars:
   - `LIBP2P_BOOTSTRAP` (comma-separated peer multiaddrs)
   - `LIBP2P_LISTEN` (comma-separated listen multiaddrs)

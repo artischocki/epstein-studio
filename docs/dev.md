@@ -54,6 +54,8 @@
   - Current runtime mesh uses gossipsub + identify + bootstrap discovery (DHT is not required for local peer test mode).
   - Publish/apply traces include `publish request`, `publish peers`, `publish ok`, `message topic`, `direct send ok`, `direct recv`, and `broadcast kind=...` lines.
   - In local multi-window Electron runs, published annotation events are also relayed across the parent/child Electron processes via debug IPC fallback for immediate sync verification.
+  - Opening a PDF triggers a p2p annotation snapshot request (`epstein.annotation.request`) with short retries so peers can return existing annotations immediately.
+  - Snapshot responses can be served from local persisted annotation state even if the requested PDF is not currently open in the responding peer.
   - Optional libp2p overrides:
     - `LIBP2P_BOOTSTRAP` (comma-separated multiaddrs)
     - `LIBP2P_LISTEN` (comma-separated listen multiaddrs)

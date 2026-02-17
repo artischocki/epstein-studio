@@ -156,11 +156,13 @@ let activePdfCommentId = null;
 let pdfCommentReplyCache = new Map();
 const LOCAL_ANNOTATION_STATE_VERSION = 1;
 const P2P_ANNOTATION_EVENT_KIND = "epstein.annotation.state";
+const P2P_ANNOTATION_REQUEST_KIND = "epstein.annotation.request";
 const P2P_ANNOTATION_EVENT_VERSION = 1;
 const p2pBridge = window.epsteinP2P || null;
 const p2pSessionId = generateHash();
 const p2pSeenEventIds = new Set();
 const p2pLastTimestampByPdf = new Map();
+const p2pSeenRequestIds = new Set();
 
 function formatTimestamp(value, { dateOnly = false } = {}) {
   if (!value) return "";
@@ -253,6 +255,48 @@ function normalizeAnnotationState(state) {
   };
 }
 
+function uniqBy(items, keyFn) {
+  const out = [];
+  const seen = new Set();
+  for (const item of items) {
+    const key = keyFn(item);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function mergeAnnotationStates(baseState, incomingState) {
+  const base = normalizeAnnotationState(baseState);
+  const incoming = normalizeAnnotationState(incomingState);
+  const baseAnnotations = Array.isArray(base.annotations) ? base.annotations : [];
+  const incomingAnnotations = Array.isArray(incoming.annotations) ? incoming.annotations : [];
+  const annMap = new Map();
+  for (const ann of baseAnnotations) {
+    if (ann?.id) annMap.set(ann.id, { ...ann });
+  }
+  for (const ann of incomingAnnotations) {
+    if (!ann?.id) continue;
+    const prev = annMap.get(ann.id) || {};
+    annMap.set(ann.id, { ...prev, ...ann, isNew: false });
+  }
+  const annotationIds = new Set(Array.from(annMap.keys()));
+  const textItems = uniqBy(
+    [...base.textItems, ...incoming.textItems].filter((item) => item && annotationIds.has(item.annotationId || "")),
+    (item) => `${item.annotationId || ""}:${item.x}:${item.y}:${item.text || ""}`
+  );
+  const arrows = uniqBy(
+    [...base.arrows, ...incoming.arrows].filter((item) => item && annotationIds.has(item.annotationId || "")),
+    (item) => `${item.annotationId || ""}:${item.x1}:${item.y1}:${item.x2}:${item.y2}`
+  );
+  return {
+    annotations: Array.from(annMap.values()),
+    textItems,
+    arrows,
+  };
+}
+
 function currentAnnotationStateSnapshot(pdfName) {
   if (currentPdfKey && pdfName === currentPdfKey) {
     serializeCurrentState();
@@ -265,10 +309,29 @@ function currentAnnotationStateSnapshot(pdfName) {
   };
 }
 
-async function publishP2PAnnotationState(pdfName) {
+function shareableAnnotationStateSnapshot(pdfName) {
+  const memoryState = currentAnnotationStateSnapshot(pdfName);
+  const hasMemoryData = memoryState.annotations.length > 0
+    || memoryState.textItems.length > 0
+    || memoryState.arrows.length > 0;
+  if (hasMemoryData) {
+    return memoryState;
+  }
+  const localState = normalizeAnnotationState(loadLocalAnnotationState(pdfName));
+  return {
+    annotations: localState.annotations.map((ann) => ({ ...ann, isNew: false })),
+    textItems: localState.textItems.map((item) => ({ ...item })),
+    arrows: localState.arrows.map((item) => ({ ...item })),
+  };
+}
+
+async function publishP2PAnnotationState(pdfName, stateOverride = null) {
   if (!pdfName || !p2pBridge || typeof p2pBridge.publishAnnotationEvent !== "function") {
     return;
   }
+  const state = stateOverride
+    ? normalizeAnnotationState(stateOverride)
+    : currentAnnotationStateSnapshot(pdfName);
   const payload = {
     kind: P2P_ANNOTATION_EVENT_KIND,
     version: P2P_ANNOTATION_EVENT_VERSION,
@@ -277,13 +340,36 @@ async function publishP2PAnnotationState(pdfName) {
     user: String(document.body.dataset.user || "anon"),
     pdf: pdfName,
     ts: Date.now(),
-    state: currentAnnotationStateSnapshot(pdfName),
+    state,
   };
   markSeenP2PEvent(payload.eventId);
   try {
     const result = await p2pBridge.publishAnnotationEvent(payload);
     if (!result || result.ok !== true) {
       console.warn("P2P publish rejected", result);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function publishP2PAnnotationRequest(pdfName) {
+  if (!pdfName || !p2pBridge || typeof p2pBridge.publishAnnotationEvent !== "function") {
+    return;
+  }
+  const payload = {
+    kind: P2P_ANNOTATION_REQUEST_KIND,
+    version: P2P_ANNOTATION_EVENT_VERSION,
+    eventId: generateHash(),
+    sessionId: p2pSessionId,
+    pdf: pdfName,
+    ts: Date.now(),
+  };
+  p2pSeenRequestIds.add(payload.eventId);
+  try {
+    const result = await p2pBridge.publishAnnotationEvent(payload);
+    if (!result || result.ok !== true) {
+      console.warn("P2P request rejected", result);
     }
   } catch (err) {
     console.error(err);
@@ -300,27 +386,40 @@ function applyP2PAnnotationState(eventPayload) {
   if (p2pSeenEventIds.has(eventPayload.eventId)) return;
 
   const remoteTs = Number(eventPayload.ts) || Date.now();
-  const knownTs = p2pLastTimestampByPdf.get(eventPayload.pdf) || 0;
-  if (remoteTs < knownTs) return;
-
   markSeenP2PEvent(eventPayload.eventId);
-  p2pLastTimestampByPdf.set(eventPayload.pdf, remoteTs);
+  p2pLastTimestampByPdf.set(eventPayload.pdf, Math.max(remoteTs, p2pLastTimestampByPdf.get(eventPayload.pdf) || 0));
 
   const next = normalizeAnnotationState(eventPayload.state);
   const existing = pdfState.get(eventPayload.pdf) || {};
+  const merged = mergeAnnotationStates(existing, next);
   pdfState.set(eventPayload.pdf, {
     ...existing,
-    annotations: next.annotations,
-    textItems: next.textItems,
-    arrows: next.arrows,
+    annotations: merged.annotations,
+    textItems: merged.textItems,
+    arrows: merged.arrows,
   });
-  saveLocalAnnotationState(eventPayload.pdf, next);
+  saveLocalAnnotationState(eventPayload.pdf, merged);
 
   if (eventPayload.pdf === currentPdfKey) {
     loadStateForPdf(currentPdfKey);
     rebuildHeatmapBase();
     renderHeatmap();
   }
+}
+
+function handleP2PAnnotationRequest(eventPayload) {
+  if (!eventPayload || typeof eventPayload !== "object") return;
+  if (eventPayload.kind !== P2P_ANNOTATION_REQUEST_KIND) return;
+  if (eventPayload.version !== P2P_ANNOTATION_EVENT_VERSION) return;
+  if (!eventPayload.pdf || typeof eventPayload.pdf !== "string") return;
+  if (!eventPayload.eventId || typeof eventPayload.eventId !== "string") return;
+  if (eventPayload.sessionId && eventPayload.sessionId === p2pSessionId) return;
+  if (p2pSeenRequestIds.has(eventPayload.eventId)) return;
+  p2pSeenRequestIds.add(eventPayload.eventId);
+  const state = shareableAnnotationStateSnapshot(eventPayload.pdf);
+  const hasData = state.annotations.length > 0 || state.textItems.length > 0 || state.arrows.length > 0;
+  if (!hasData) return;
+  void publishP2PAnnotationState(eventPayload.pdf, state);
 }
 
 function setupP2PAnnotationSync() {
@@ -332,6 +431,7 @@ function setupP2PAnnotationSync() {
       void p2pBridge.getState();
     }
     const unsubscribe = p2pBridge.onAnnotationEvent((eventPayload) => {
+      handleP2PAnnotationRequest(eventPayload);
       applyP2PAnnotationState(eventPayload);
     });
     window.addEventListener("beforeunload", () => {
@@ -3093,6 +3193,14 @@ async function loadAnnotationsForPdf(pdfName) {
   loadStateForPdf(pdfName);
   rebuildHeatmapBase();
   renderHeatmap();
+  void publishP2PAnnotationRequest(pdfName);
+  [1000, 2000].forEach((delayMs) => {
+    window.setTimeout(() => {
+      if (currentPdfKey === pdfName) {
+        void publishP2PAnnotationRequest(pdfName);
+      }
+    }, delayMs);
+  });
 }
 
 async function saveAnnotationsForPdf({ broadcast = true } = {}) {
