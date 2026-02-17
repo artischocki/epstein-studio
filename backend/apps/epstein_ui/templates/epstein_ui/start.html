@@ -82,7 +82,7 @@
                       <li>
                         <a href="/{{ item.filename|cut:'.pdf' }}">
                           <span class="start-ranked-name">{{ item.filename }}</span>
-                          <span class="start-ranked-stat">{{ item.discussion_count }} comment{{ item.discussion_count|pluralize }}</span>
+                          <span class="start-ranked-stat">{{ item.comment_count }} comment{{ item.discussion_count|pluralize }}</span>
                         </a>
                       </li>
                     {% endfor %}

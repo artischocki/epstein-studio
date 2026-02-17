@@ -16,7 +16,8 @@ from django.contrib.auth import login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Count, Q
+from django.core.cache import cache
+from django.db.models import Count, Q, Sum
 from django.db.utils import OperationalError, ProgrammingError
 
 from .models import (
@@ -171,24 +172,30 @@ def _render_pdf_pages(pdf_path: Path) -> list[Path]:
     return rendered
 
 
-def start_page(request):
-    """Render the landing page with project stats."""
-    try:
-        total_pdfs = PdfDocument.objects.count()
-        annotated_pdfs = PdfDocument.objects.filter(annotation_count__gt=0).count()
-        total_annotations = Annotation.objects.count()
-        total_users = User.objects.count()
-        total_comments = PdfComment.objects.count() + AnnotationComment.objects.count()
+STATS_CACHE_KEY = "start_page_stats"
+STATS_CACHE_TTL = 60 * 10  # 10 minutes
 
+
+def _build_start_stats():
+    """Compute start page stats from denormalized fields."""
+    try:
+        totals = PdfDocument.objects.aggregate(
+            total_pdfs=Count("id"),
+            annotated_pdfs=Count("id", filter=Q(annotation_count__gt=0)),
+            sum_annotations=Sum("annotation_count"),
+            sum_comments=Sum("comment_count"),
+        )
+        total_pdfs = totals["total_pdfs"] or 0
+        annotated_pdfs = totals["annotated_pdfs"] or 0
+        total_annotations = totals["sum_annotations"] or 0
+        total_comments = totals["sum_comments"] or 0
+        total_users = User.objects.count()
         coverage_pct = round((annotated_pdfs / total_pdfs * 100) if total_pdfs > 0 else 0)
 
         most_discussed = list(
-            PdfDocument.objects.annotate(
-                discussion_count=Count("comments")
-            )
-            .filter(discussion_count__gt=0)
-            .order_by("-discussion_count")[:5]
-            .values("filename", "discussion_count")
+            PdfDocument.objects.filter(comment_count__gt=0)
+            .order_by("-comment_count")[:5]
+            .values("filename", "comment_count")
         )
 
         most_promising = list(
@@ -197,16 +204,13 @@ def start_page(request):
             .values("filename", "vote_score")
         )
     except (OperationalError, ProgrammingError):
-        total_pdfs = 0
-        annotated_pdfs = 0
-        total_annotations = 0
-        total_users = 0
-        total_comments = 0
-        coverage_pct = 0
-        most_discussed = []
-        most_promising = []
+        return {
+            "total_pdfs": 0, "annotated_pdfs": 0, "total_annotations": 0,
+            "total_users": 0, "total_comments": 0, "coverage_pct": 0,
+            "most_discussed": [], "most_promising": [],
+        }
 
-    return render(request, "epstein_ui/start.html", {
+    return {
         "total_pdfs": total_pdfs,
         "annotated_pdfs": annotated_pdfs,
         "total_annotations": total_annotations,
@@ -215,7 +219,16 @@ def start_page(request):
         "coverage_pct": coverage_pct,
         "most_discussed": most_discussed,
         "most_promising": most_promising,
-    })
+    }
+
+
+def start_page(request):
+    """Render the landing page with cached project stats."""
+    stats = cache.get(STATS_CACHE_KEY)
+    if stats is None:
+        stats = _build_start_stats()
+        cache.set(STATS_CACHE_KEY, stats, STATS_CACHE_TTL)
+    return render(request, "epstein_ui/start.html", stats)
 
 
 def index(request, pdf_slug=None, target_hash=None):
